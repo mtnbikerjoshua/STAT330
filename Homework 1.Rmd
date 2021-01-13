@@ -14,6 +14,7 @@ h1.title {
 
 ```{r setup, include=FALSE}
 # load any necessary packages here
+library(tidyverse)
 ```
 
 ## Data and Description
@@ -32,60 +33,73 @@ We would like to know how a change in wind speed at a reference site affects the
 
 #### 2. Read in the data set, and call the data frame "wind". Print a summary of the data and make sure the data makes sense. 
 
-```{r}
-
+```{r, message=FALSE}
+wind <- read_table2("Windmill.txt")
+wind
 ```
 
 #### 3. What is the outcome variable in this situation? (Think about which variable makes the most sense to be the response.)
 
-< your response here >
+The outcome variable is the wind speed at the canidate site.
 
 #### 4. What is the explanatory variable in this situation?
 
-< your response here >
+The explanatory variable is the wind speed at the reference site.
 
 #### 5. Create (and output) a scatterplot of the data with variables on the appropriate axes. Make you plot look professional and you follow the Homework Rules (under Module 0). (Make sure the axes have appropriate limits to capture the data nicely, make sure the axes labels are descriptive with units, etc.).
 
 ```{r, fig.align='center'}
-# <your code here>
+ggplot(data = wind, mapping = aes(x = RSpd, y = CSpd)) +
+  geom_point() +
+  xlab("Wind Speed at Reference Site (m/s)") +
+  ylab("Wind Speed at Canidate Site (m/s)") +
+  xlim(0, 23) +
+  ylim(0, 25) +
+  coord_fixed() +
+  theme_minimal()
 ```
 
 #### 6. Briefly describe the relationship between RSpd and CSpd. (Hint: you should use 2 or 3 key words.)
 
-< your response here >
+The two variables of interest appear to have a fairly strong, positive, linear correlation.
 
 #### 7. Calculate the correlation coefficient for the two variables. Print the result.
 
 ```{r}
-# <your code here>
+cor(wind$RSpd, wind$CSpd)
 ```
 
 #### 8. Briefly interpret the number you calculated for the correlation coefficient (what is the direction and strength of the correlation?).
 
-< your response here >
+There is a moderate/strong positive correlation. As wind speed at one location increases, so does wind speed at the corresponding location.
 
 #### 9. Mathematically write out the theoretical/general simple linear regression model for this data set (using parameters ($\beta$s), not estimates). Clearly explain which part of the model is deterministic and which part is random. Do not use "x" and "y" in your model - use variable names that are descriptive.
 
-< your response here. Note that you can write math in R markdown by surrounding the math in dollar signs. For example:
-
-$\beta_0$ (intercept - beta with zero subscript)
-
-$\times$ (multiplication symbol)
-
-$\text{Weight}_i$ (i subscript on variable name not italicized)
-
-$\epsilon_i$ (error term with i subscript) >
+$\text{CanidateSpeed}_i=\beta_0+\beta_1\cdot\text{RefSpeed}_i+\epsilon_i$
 
 #### 10. Add the OLS regression line to the scatterplot you created in 4. Print the result.
 
 ```{r, fig.align='center'}
-# <your code here>
+model <- lm(CSpd ~ RSpd, data = wind)
+ggplot(data = wind, mapping = aes(x = RSpd, y = CSpd)) +
+  geom_point() +
+  geom_abline(slope = model$coefficients["RSpd"],
+              intercept = model$coefficients["(Intercept)"],
+              color = "Blue") +
+  xlab("Wind Speed at Reference Site (m/s)") +
+  ylab("Wind Speed at Canidate Site (m/s)") +
+  xlim(0, 23) +
+  ylim(0, 25) +
+  coord_fixed() +
+  theme_minimal()
 ```
 
 #### 11. Apply linear regression to the data, and save the residuals and fitted values to the `wind` data frame. Print out a summary of the results from the `lm` function.
 
 ```{r}
-# <your code here>
+wind <- wind %>%
+  mutate(resid = resid(model), fitted_val = fitted(model))
+model
 ```
 
 #### 12. Briefly explain the rational behind the ordinary least-squares model fit.
@@ -94,7 +108,7 @@ $\epsilon_i$ (error term with i subscript) >
 
 #### 13. Mathematically write out the fitted simple linear regression model for this data set using the coefficients you found above (do not use parameters/$\beta$s). Do not use "x" and "y" in your model - use variable names that are fairly descriptive.
 
-< your response here. Note that you can write math in R markdown by surrounding the math in dollar signs. >
+$\text{CanidateSpeed}_i=3.1412+0.7557\cdot\text{RefSpeed}_i+\epsilon_i$
 
 #### 14. Interpret the coefficient for the slope.
 
@@ -107,12 +121,12 @@ $\epsilon_i$ (error term with i subscript) >
 #### 16. What is the average wind speed at the candidate site (CSpd) when the wind speed at the reference site (RSpd) is 12 m/s? Show your code, and print the result.
 
 ```{r}
-# <your code here>
+predict(model, tibble(RSpd = 12))
 ```
 
 #### 17. Briefly explain why it would be wrong to answer this question: What is the average wind speed at the candidate site (CSpd) when the wind speed at the reference site (RSpd) is 25 m/s?
 
-< your response here >
+Our regression model did not go that high and we have no idea if the model is accuarte beyond the data that we used.
 
 #### 18. Calculate the MSE, or the average squared variability of the residuals around the line. Show your code, and print the result.
 
