@@ -34,13 +34,13 @@ We would like to know how a change in wind speed at a reference site affects the
 #### 2. Read in the data set, and call the data frame "wind". Print a summary of the data and make sure the data makes sense. 
 
 ```{r, message=FALSE}
-wind <- read_table2("Windmill.txt")
-wind
+(wind <- read_table2("Windmill.txt"))
+summary(wind)
 ```
 
 #### 3. What is the outcome variable in this situation? (Think about which variable makes the most sense to be the response.)
 
-The outcome variable is the wind speed at the canidate site.
+The outcome variable is the wind speed at the candidate site.
 
 #### 4. What is the explanatory variable in this situation?
 
@@ -49,14 +49,14 @@ The explanatory variable is the wind speed at the reference site.
 #### 5. Create (and output) a scatterplot of the data with variables on the appropriate axes. Make you plot look professional and you follow the Homework Rules (under Module 0). (Make sure the axes have appropriate limits to capture the data nicely, make sure the axes labels are descriptive with units, etc.).
 
 ```{r, fig.align='center'}
-ggplot(data = wind, mapping = aes(x = RSpd, y = CSpd)) +
+(wind.plot <- ggplot(data = wind, mapping = aes(x = RSpd, y = CSpd)) +
   geom_point() +
   xlab("Wind Speed at Reference Site (m/s)") +
   ylab("Wind Speed at Canidate Site (m/s)") +
   xlim(0, 23) +
   ylim(0, 25) +
   coord_fixed() +
-  theme_minimal()
+  theme_minimal())
 ```
 
 #### 6. Briefly describe the relationship between RSpd and CSpd. (Hint: you should use 2 or 3 key words.)
@@ -71,7 +71,7 @@ cor(wind$RSpd, wind$CSpd)
 
 #### 8. Briefly interpret the number you calculated for the correlation coefficient (what is the direction and strength of the correlation?).
 
-There is a moderate/strong positive correlation. As wind speed at one location increases, so does wind speed at the corresponding location.
+There is a moderate/strong positive correlation. As average wind speed at one location increases, so does average wind speed at the corresponding location.
 
 #### 9. Mathematically write out the theoretical/general simple linear regression model for this data set (using parameters ($\beta$s), not estimates). Clearly explain which part of the model is deterministic and which part is random. Do not use "x" and "y" in your model - use variable names that are descriptive.
 
@@ -79,44 +79,33 @@ $\text{CanidateSpeed}_i=\beta_0+\beta_1\cdot\text{RefSpeed}_i+\epsilon_i$
 
 #### 10. Add the OLS regression line to the scatterplot you created in 4. Print the result.
 
-```{r, fig.align='center'}
-model <- lm(CSpd ~ RSpd, data = wind)
-ggplot(data = wind, mapping = aes(x = RSpd, y = CSpd)) +
-  geom_point() +
-  geom_abline(slope = model$coefficients["RSpd"],
-              intercept = model$coefficients["(Intercept)"],
-              color = "Blue") +
-  xlab("Wind Speed at Reference Site (m/s)") +
-  ylab("Wind Speed at Canidate Site (m/s)") +
-  xlim(0, 23) +
-  ylim(0, 25) +
-  coord_fixed() +
-  theme_minimal()
+```{r, fig.align='center', message=FALSE}
+wind.plot + geom_smooth(method = "lm", se = FALSE)
 ```
 
 #### 11. Apply linear regression to the data, and save the residuals and fitted values to the `wind` data frame. Print out a summary of the results from the `lm` function.
 
 ```{r}
+(model <- lm(CSpd ~ RSpd, data = wind))
 wind <- wind %>%
   mutate(resid = resid(model), fitted_val = fitted(model))
-model
 ```
 
 #### 12. Briefly explain the rational behind the ordinary least-squares model fit.
 
-< your response here >
+The method of OLS regression finds a line that minimizes the squared difference between the predicted values and the actual values. Essentially, we minimize the variance of the data from the fitted line.
 
 #### 13. Mathematically write out the fitted simple linear regression model for this data set using the coefficients you found above (do not use parameters/$\beta$s). Do not use "x" and "y" in your model - use variable names that are fairly descriptive.
 
-$\text{CanidateSpeed}_i=3.1412+0.7557\cdot\text{RefSpeed}_i+\epsilon_i$
+$\text{CanidateSpeed}_i=3.1412+0.7557\cdot\text{RefSpeed}_i$
 
 #### 14. Interpret the coefficient for the slope.
 
-< your response here >
+For every increase of 1 meter per second in the average wind speed at the reference site, the avearage wind speed at the corresponding candidate site will increase, on average, 0.7557 meters per second.
 
 #### 15. Interpret the coefficient for the intercept.
 
-< your response here >
+If there were a reference site with an average wind speed of 0 meters per second, the corresponding reference sites would have an overall average wind speed of 3.1412 meter per second.
 
 #### 16. What is the average wind speed at the candidate site (CSpd) when the wind speed at the reference site (RSpd) is 12 m/s? Show your code, and print the result.
 
@@ -126,18 +115,18 @@ predict(model, tibble(RSpd = 12))
 
 #### 17. Briefly explain why it would be wrong to answer this question: What is the average wind speed at the candidate site (CSpd) when the wind speed at the reference site (RSpd) is 25 m/s?
 
-Our regression model did not go that high and we have no idea if the model is accuarte beyond the data that we used.
+Our regression model did not go that high and we have no idea if the model is accurate beyond the data that we used.
 
 #### 18. Calculate the MSE, or the average squared variability of the residuals around the line. Show your code, and print the result.
 
 ```{r}
-# <your code here>
+sum(wind$resid^2) / model$df.residual
 ```
 
 #### 19. Briefly summarize what you learned, personally, from this analysis about the statistics, model fitting process, etc.
 
-< your response here >
+I knew nearly everything in this analysis already, however, I did not know about the assumptions of linear regression, namely that the data is independent and normally distributed with a uniform standard deviation.
 
 #### 20. Briefly summarize what you learned from this analysis *to a non-statistician*. Write a few sentences about (1) the purpose of this data set and analysis and (2) what you learned about this data set from your analysis. Write your response as if you were addressing a business manager (avoid using statistics jargon) and just provide the main take-aways.
 
-< your response here >
+The purpose of this analysis was to determine an effective way to predict wind speed at a candidate site to receive a windmill given wind speed data from a nearby reference site. A brief perusal of the data allowed us to determine that wind speed at a candidate site could be easily predicted by a simple formula. We determined that as average wind speed of a reference site increases, the average wind seed of a candidate site increases by about 75% of the increase of the reference site. We have yet to do an in-depth analysis of the precision of this prediction.
