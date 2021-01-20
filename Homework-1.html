@@ -275,11 +275,12 @@ h1.title {
 </div>
 <div id="briefly-interpret-the-number-you-calculated-for-the-correlation-coefficient-what-is-the-direction-and-strength-of-the-correlation." class="section level4">
 <h4>8. Briefly interpret the number you calculated for the correlation coefficient (what is the direction and strength of the correlation?).</h4>
-<p>There is a moderate/strong positive correlation. As average wind speed at one location increases, so does average wind speed at the corresponding location.</p>
+<p>There is a moderate/strong positive correlation. As wind speed at one location increases, so does wind speed at the corresponding location.</p>
 </div>
 <div id="mathematically-write-out-the-theoreticalgeneral-simple-linear-regression-model-for-this-data-set-using-parameters-betas-not-estimates.-clearly-explain-which-part-of-the-model-is-deterministic-and-which-part-is-random.-do-not-use-x-and-y-in-your-model---use-variable-names-that-are-descriptive." class="section level4">
 <h4>9. Mathematically write out the theoretical/general simple linear regression model for this data set (using parameters (<span class="math inline">\(\beta\)</span>s), not estimates). Clearly explain which part of the model is deterministic and which part is random. Do not use “x” and “y” in your model - use variable names that are descriptive.</h4>
 <p><span class="math inline">\(\text{CanidateSpeed}_i=\beta_0+\beta_1\cdot\text{RefSpeed}_i+\epsilon_i\)</span></p>
+<p>The right-hand side of the equation constitutes the model. The <span class="math inline">\(\epsilon_i\)</span> is the error term or the random part of the model. The rest is the deterministic part.</p>
 </div>
 <div id="add-the-ols-regression-line-to-the-scatterplot-you-created-in-4.-print-the-result." class="section level4">
 <h4>10. Add the OLS regression line to the scatterplot you created in 4. Print the result.</h4>
@@ -305,15 +306,15 @@ h1.title {
 </div>
 <div id="mathematically-write-out-the-fitted-simple-linear-regression-model-for-this-data-set-using-the-coefficients-you-found-above-do-not-use-parametersbetas.-do-not-use-x-and-y-in-your-model---use-variable-names-that-are-fairly-descriptive." class="section level4">
 <h4>13. Mathematically write out the fitted simple linear regression model for this data set using the coefficients you found above (do not use parameters/<span class="math inline">\(\beta\)</span>s). Do not use “x” and “y” in your model - use variable names that are fairly descriptive.</h4>
-<p><span class="math inline">\(\text{CanidateSpeed}_i=3.1412+0.7557\cdot\text{RefSpeed}_i\)</span></p>
+<p><span class="math inline">\(\widehat{\text{CanidateSpeed}}_i=3.1412+0.7557\cdot\text{RefSpeed}_i\)</span></p>
 </div>
 <div id="interpret-the-coefficient-for-the-slope." class="section level4">
 <h4>14. Interpret the coefficient for the slope.</h4>
-<p>For every increase of 1 meter per second in the average wind speed at the reference site, the avearage wind speed at the corresponding candidate site will increase, on average, 0.7557 meters per second.</p>
+<p>For every increase of 1 meter per second in the wind speed at the reference site, the wind speed at the corresponding candidate site will increase, on average, 0.7557 meters per second.</p>
 </div>
 <div id="interpret-the-coefficient-for-the-intercept." class="section level4">
 <h4>15. Interpret the coefficient for the intercept.</h4>
-<p>If there were a reference site with an average wind speed of 0 meters per second, the corresponding reference sites would have an overall average wind speed of 3.1412 meter per second.</p>
+<p>If there were a reference site with a wind speed of 0 meters per second, we would predict the average wind speed of the corresponding candidate sites to be 3.1412 meter per second.</p>
 </div>
 <div id="what-is-the-average-wind-speed-at-the-candidate-site-cspd-when-the-wind-speed-at-the-reference-site-rspd-is-12-ms-show-your-code-and-print-the-result." class="section level4">
 <h4>16. What is the average wind speed at the candidate site (CSpd) when the wind speed at the reference site (RSpd) is 12 m/s? Show your code, and print the result.</h4>

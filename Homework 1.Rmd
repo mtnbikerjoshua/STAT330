@@ -71,11 +71,13 @@ cor(wind$RSpd, wind$CSpd)
 
 #### 8. Briefly interpret the number you calculated for the correlation coefficient (what is the direction and strength of the correlation?).
 
-There is a moderate/strong positive correlation. As average wind speed at one location increases, so does average wind speed at the corresponding location.
+There is a moderate/strong positive correlation. As wind speed at one location increases, so does wind speed at the corresponding location.
 
 #### 9. Mathematically write out the theoretical/general simple linear regression model for this data set (using parameters ($\beta$s), not estimates). Clearly explain which part of the model is deterministic and which part is random. Do not use "x" and "y" in your model - use variable names that are descriptive.
 
 $\text{CanidateSpeed}_i=\beta_0+\beta_1\cdot\text{RefSpeed}_i+\epsilon_i$
+
+The right-hand side of the equation constitutes the model. The $\epsilon_i$ is the error term or the random part of the model. The rest is the deterministic part.
 
 #### 10. Add the OLS regression line to the scatterplot you created in 4. Print the result.
 
@@ -97,15 +99,15 @@ The method of OLS regression finds a line that minimizes the squared difference 
 
 #### 13. Mathematically write out the fitted simple linear regression model for this data set using the coefficients you found above (do not use parameters/$\beta$s). Do not use "x" and "y" in your model - use variable names that are fairly descriptive.
 
-$\text{CanidateSpeed}_i=3.1412+0.7557\cdot\text{RefSpeed}_i$
+$\widehat{\text{CanidateSpeed}}_i=3.1412+0.7557\cdot\text{RefSpeed}_i$
 
 #### 14. Interpret the coefficient for the slope.
 
-For every increase of 1 meter per second in the average wind speed at the reference site, the avearage wind speed at the corresponding candidate site will increase, on average, 0.7557 meters per second.
+For every increase of 1 meter per second in the wind speed at the reference site, the wind speed at the corresponding candidate site will increase, on average, 0.7557 meters per second.
 
 #### 15. Interpret the coefficient for the intercept.
 
-If there were a reference site with an average wind speed of 0 meters per second, the corresponding reference sites would have an overall average wind speed of 3.1412 meter per second.
+If there were a reference site with a wind speed of 0 meters per second, we would predict the average wind speed of the corresponding candidate sites to be 3.1412 meter per second.
 
 #### 16. What is the average wind speed at the candidate site (CSpd) when the wind speed at the reference site (RSpd) is 12 m/s? Show your code, and print the result.
 
