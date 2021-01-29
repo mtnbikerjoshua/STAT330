@@ -1,0 +1,489 @@
+---
+title: "Module 2 - Simple Linear Regression Model Assumptions"
+subtitle: <center> <h1>In-Class Analysis</h1> </center>
+output: html_document
+---
+
+<style type="text/css">
+h1.title {
+  font-size: 40px;
+  text-align: center;
+}
+</style>
+
+```{r setup, include=FALSE}
+# load packages here
+library(tidyverse)
+library(ggfortify)  # plot lm objects using ggplot instead of base R
+library(car)  # Brown-Forsythe Test and Box-Cox transformation
+```
+
+## Data and Description
+
+Recent increases in gas prices make buyers more prone to purchase a car with better gas mileage, as measured by the **miles per gallon (MPG)**. Because of this, car manufacturers are increasingly trying to produce the car that gives the best MPG. Complicating this process are the many factors that go into determining what gas mileage a car will achieve on the road.
+
+One such factor is the **weight** of the car. While it is generally understood that heavier cars will experience fewer MPG, there is little understanding of how much an increase in weight will lead to a decrease MPG. By understanding this relationship, manufacturers will be able to perform a cost--benefit analysis that will assist them in their vehicle production.
+
+The MPG data set contains measurements of the **weight (column 1)** (in pounds) and **MPG (column 2)** of 289 cars. Download the MPGData.txt file from Canvas, and put it in the same folder as this R Markdown file. 
+
+Do the following (what we've done before):
+
+1. Read in the data set, take a look at the top few rows, and look at a summary of the data.    
+2. Create a scatterplot of the data with Weight on the x-axis and MPG on the y-axis, and overlay the linear regression line.
+3. Apply linear regression to the data, and save the residuals and fitted values to the `cars` data frame.
+
+```{r}
+# Note: this code is all from Module 1
+cars <- read.csv("MPGData.txt", header = TRUE, sep = " ")
+head(cars)
+summary(cars)
+
+# we are saving this plot as a variable since we will use it later when 
+# checking assumptions
+cars_base_plot <- ggplot(data = cars, mapping = aes(x = Weight, y = MPG)) +
+  geom_point() +
+  theme_bw() +
+  scale_x_continuous(limits = c(1500, 3500)) +
+  scale_y_continuous(limits = c(10, 50)) +
+  theme(aspect.ratio = 1)
+cars_base_plot + geom_smooth(method = "lm", se = FALSE) 
+
+cars_lm <- lm(MPG ~ Weight, data = cars)
+summary(cars_lm)
+cars$residuals <- cars_lm$residuals
+cars$fittedMPG <- cars_lm$fitted.values
+```
+
+## Diagnostics: Check That Assumptions are Met
+
+### 1. (L) X vs Y is linear
+
+**(a) Scatterplot**
+
+```{r, fig.align='center'}
+# <your code here>
+# Hint: same plot that you already created, just print the variable storing the
+# plot
+```
+
+**(b) Residuals vs. Fitted Values Plot**
+
+```{r, fig.align='center'}
+# <your code here>
+# save the plot as a variable since we will use it later for other assumptions
+# Hint: autoplot(cars_lm, which = 1, ncol = 1, nrow = 1)
+```
+
+**(c) Residuals vs. Predictor Plot**
+
+```{r, fig.align='center'}
+# <your code here>
+# ggplot() and geom_point()
+```
+
+< your response here >
+
+
+### 2. (I) The residuals are independent across all values of y
+
+This assumption is difficult to test statistically. Generally, if you have a random sample, the residuals will be independent. Since the description of the data did not include how the cars were sampled, we do not know if this assumption is met.
+
+*If* the observations in this data set were in a natural order, then we could use a sequence plot to assess dependence, *but a sequence plot is inappropriate here* since the data are not in a natural order. Below is the code to create a sequence plot, for your reference only.
+
+**(a) Sequence Plot**
+
+```{r, eval=FALSE}
+# Note: this plot is not appropriate to create for this data set
+ggplot(data = cars, mapping = aes(x = 1:dim(cars)[1], y = residuals)) +
+  geom_line() +
+  theme_bw() + 
+  scale_y_continuous(limits = c(-15, 20)) +
+  scale_x_continuous(limits = c(0, 295)) +
+  xlab("Order in Data Set") +
+  theme(aspect.ratio = 1)
+```
+
+
+### 3. (N) The residuals are normally distributed and centered at zero
+
+**(a) Boxplot**
+
+```{r, fig.align='center'}
+# <your code here>
+# save the plot as a variable since we will use it later for other assumptions
+# Hint: ggplot() and geom_boxplot()
+```
+
+**(b) Histogram**
+
+```{r, fig.align='center'}
+# save the plot as a variable since we will use it later for other assumptions
+cars_hist <- ggplot(data = cars, mapping = aes(x = residuals)) + 
+  # when using this code for future data sets, make sure to change the binwidth: 
+  geom_histogram(mapping = aes(y = ..density..), binwidth = 2) +
+  # stat_function() overlays the red normal curve on the histogram
+  stat_function(fun = dnorm, 
+                color = "red", 
+                size = 2,
+                args = list(mean = mean(cars$residuals), 
+                            sd = sd(cars$residuals))) 
+# <additional code here to make the plot look pretty>
+cars_hist
+```
+
+**(c) Normal Probability Plot**
+
+```{r, fig.align='center'}
+# <your code here>
+# save the plot as a variable since we will use it later for other assumptions
+# Hint: autoplot(cars_lm, which = 2, ncol = 1, nrow = 1) 
+```
+
+**(d) Shapiro-Wilk Test**
+
+```{r}
+# <your code here>
+# Hint: shapiro.test()
+```
+
+< your response here >
+
+
+### 4. (E) The residuals have equal (constant) variance across all values of X (homoscedastic)
+
+**(a) Residuals vs. Fitted Values Plot**
+
+```{r, fig.align='center'}
+# <your code here>
+# Hint: same plot that you already created, just print the variable storing the
+# plot
+```
+
+**(b) Brown-Forsythe Test**
+```{r}
+grp <- as.factor(c(rep("lower", floor(dim(cars)[1] / 2)), 
+                   rep("upper", ceiling(dim(cars)[1] / 2))))
+leveneTest(cars[order(cars$Weight), "residuals"] ~ grp, center = median)
+```
+
+< your response here >
+
+
+### 5. (A) The model describes all observations (i.e., there are no influential points)
+
+**(a) Scatterplot**
+```{r, fig.align='center'}
+# <your code here>
+# Hint: same plot that you already created, just print the variable storing the
+# plot
+```
+
+**(b) Boxplot**
+
+```{r, fig.align='center'}
+# <your code here>
+# Hint: same plot that you already created, just print the variable storing the
+# plot
+```
+
+**(c) Histogram**
+
+```{r, fig.align='center'}
+# <your code here>
+# Hint: same plot that you already created, just print the variable storing the
+# plot
+```
+
+**(d) Normal Probability Plot**
+
+```{r, fig.align='center'}
+# <your code here>
+# Hint: same plot that you already created, just print the variable storing the
+# plot
+```
+
+**(e) Cook's Distance**
+
+```{r, fig.align='center'}
+# get Cook's distance values for all observations
+cars$cooksd <- cooks.distance(cars_lm)
+
+# plot Cook's distance against the observation number
+ggplot(data = cars) + 
+  geom_point(mapping = aes(x = as.numeric(rownames(cars)), 
+                           y = cooksd)) +
+  theme_bw() +
+  ylab("Cook's Distance") +
+  xlab("Observation Number") +
+  geom_hline(mapping = aes(yintercept = 4 / length(cooksd)),
+             color = "red", linetype = "dashed") +
+  scale_x_continuous(limits = c(0, 300)) +
+  scale_y_continuous(limits = c(0, 0.05)) +
+  theme(aspect.ratio = 1)
+
+# print a list of potential outliers according to Cook's distance
+cars %>% 
+  mutate(rowNum = row.names(cars)) %>%  # save original row numbers 
+  filter(cooksd > 4 / length(cooksd)) %>%  # select potential outliers
+  arrange(desc(cooksd))  # order from largest Cook's distance to smallest
+```
+
+**(f) DFBETAS**
+
+```{r, fig.align='center'}
+# calculate the DFBETAS for Weight
+cars$dfbetas_weight <- as.vector(dfbetas(cars_lm)[, 2])
+
+# plot the DFBETAS against the observation number
+ggplot(data = cars) + 
+  geom_point(mapping = aes(x = as.numeric(rownames(cars)), 
+                           y = abs(dfbetas_weight))) +
+  theme_bw() +
+  ylab("Absolute Value of DFBETAS for Weight") +
+  xlab("Observation Number") +
+  # for n > 30
+  geom_hline(mapping = aes(yintercept = 2 / sqrt(length(dfbetas_weight))),
+             color = "red", linetype = "dashed") + 
+  # for n <= 30 (code for future, small data sets)
+  # geom_hline(mapping = aes(yintercept = 1),
+  #            color = "red", linetype = "dashed") +
+  scale_x_continuous(limits = c(0, 300)) +
+  scale_y_continuous(limits = c(0, 0.25)) +
+  theme(aspect.ratio = 1)
+
+# print a list of potential influential points according to DFBETAS
+# for n > 30
+cars %>% 
+  mutate(rowNum = row.names(cars)) %>%  # save original row numbers 
+  filter(abs(dfbetas_weight) > 2 / 
+           sqrt(length(rownames(cars)))) %>%  # select potential influential pts
+  arrange(desc(abs(dfbetas_weight)))  # order from largest DFBETAS to smallest
+# for n <= 30 (code for future, small data sets)
+# cars %>% 
+#   mutate(rowNum = row.names(cars)) %>%  # save original row numbers 
+#   filter(abs(dfbetas_weight) > 1) %>%  # select potential influential pts
+#   arrange(desc(abs(dfbetas_weight)))  # order from largest DFBETAS to smallest
+```
+
+**(g) DFFITS**
+
+```{r, fig.align='center'}
+# calculate the DFFITS
+cars$dffits <- dffits(cars_lm)
+
+# plot the DFFITS against the observation number
+ggplot(data = cars) + 
+  geom_point(mapping = aes(x = as.numeric(rownames(cars)), 
+                           y = abs(dffits))) +
+  theme_bw() +
+  ylab("Absolute Value of DFFITS for Y") +
+  xlab("Observation Number") +
+  # for n > 30
+  geom_hline(mapping = aes(yintercept = 2 * sqrt(length(cars_lm$coefficients) /
+                                                   length(dffits))),
+             color = "red", linetype = "dashed") +
+  # for n <= 30 (code for future, small data sets)
+  # geom_hline(mapping = aes(yintercept = 1),
+  #            color = "red", linetype = "dashed") +
+  scale_x_continuous(limits = c(0, 300)) +
+  scale_y_continuous(limits = c(0, 0.3)) +
+  theme(aspect.ratio = 1)
+
+# print a list of potential influential points according to DFFITS
+# for n > 30
+cars %>% 
+  mutate(rowNum = row.names(cars)) %>%  # save original row numbers 
+  # select potential influential pts
+  filter(abs(dffits) > 2 * sqrt(length(cars_lm$coefficients) / 
+                                  length(dffits))) %>%
+  arrange(desc(abs(dffits)))  # order from largest DFFITS to smallest
+# for n <= 30 (code for future, small data sets)
+# cars %>% 
+#   mutate(rowNum = row.names(cars)) %>%  # save original row numbers 
+#   filter(abs(dffits) > 1) %>%  # select potential influential pts
+#   arrange(desc(abs(dffits)))  # order from largest DFFITS to smallest
+```
+
+< your response here >
+
+
+### 6. (R) Additional predictor variables are not required 
+
+This assumption is very likely not met. There are many other variables that could help predict MPG like the number of cylinders, vehical type, etc.
+
+
+
+### Summarize findings: 
+
+#### 1. (L) X vs Y is linear - met?
+
+< your response here >
+
+#### 2. (I) The residuals are independent - met?
+
+< your response here >
+
+#### 3. (N) The residuals are normally distributed and centered at zero - met?
+
+< your response here >
+
+#### 4. (E) The residuals have equal (constant) variance across all values of X (homoscedastic) - met?
+
+< your response here >
+
+#### 5. (A) The model describes all observations (i.e., there are no influential points) - met?
+
+< your response here >
+
+#### 6. (R) Additional predictor variables are not required - met?
+
+< your response here >
+
+
+
+## Remedial Measures: "Fix" Unmet Assumptions
+
+Given our assessment of the assumptions, we will want to perform some kind of transformation. Since the trend looks fairly linear, but other assumptions were not met, we will focus on transforming MPG instead of Weight. We will use the Box-Cox approach to find the "best" transformation of MPG (Y). 
+
+```{r, fig.align='center'}
+bc <- boxCox(cars_lm)  # plot curve
+bc$x[which.max(bc$y)]  # pull out the "best" lambda value
+```
+
+Let's transform MPG using the *** transform, refit the model, and run the diagnostics again to gauge improvement.
+
+```{r}
+# This code should transform the Y variable based on the Box-Cox results.
+# Save these transformed values (named MPG_trans) to the cars data frame in a 
+# new column.
+# Then, use the lm function to create a new model with the transformed values,
+# and call it cars_lm_trans.
+# Save the transformed residuals and fitted values to the cars data frame. Call
+# them residuals_trans and fittedMPG_trans
+# < your code here >
+```
+
+It can be informative to view the line (on the log scale) as what it looks like as a curve (on the regular scale). Here is how you plot the transformed regression model on original scale of the data.
+
+```{r}
+# Sequence of Weight values that we are interested in using to predict MPG  
+Weight_values <- seq(min(cars$Weight), max(cars$Weight), length = 100)  
+# Predictions of **log(MPG)** across those value of Weight
+log_MPG_preds <- predict(cars_lm_trans, 
+                         newdata = data.frame(Weight = Weight_values))
+# Predictions of **MPG** (back-transformed) across those value of Weight
+MPG_preds <- exp(log_MPG_preds)  # use exp to "undo" the log transform
+# Store results in a data frame for plotting
+preds <- data.frame("Weight_values" = Weight_values, 
+                    "MPG_preds" = MPG_preds)
+# Plot the predictions on the original scale (to get a curved line)
+cars_base_plot + 
+  geom_line(data = preds, 
+            aes(x = Weight_values, y = MPG_preds), 
+            size = 1.5, color ="blue")
+```
+
+
+
+
+
+## Re-Check Assumptions with new Y values (if you have time during this class period). (Note: I've excluded some assumptions for sake of time.)
+
+
+### 1. (L) X vs Y is linear
+
+**(a) Scatterplot**
+
+```{r, fig.align='center'}
+# <your code here>
+# Hint: similar to the plot that you already created, but you will plot log(MPG)
+# on the y-axis
+```
+
+**(b) Residuals vs. Fitted Values Plot**
+
+```{r, fig.align='center'}
+# <your code here>
+# Hint: similar to the plot that you already created, but you will use the 
+# residuals (residuals_trans) from the transformed model
+```
+
+**(c) Residuals vs. Predictor Plot**
+```{r, fig.align='center'}
+# <your code here>
+# Hint: similar to the plot that you already created, but you will use the 
+# residuals (residuals_trans) from the transformed model
+```
+
+< your response here >
+
+
+### 3. (N) The residuals are normally distributed and centered at zero
+
+**(a) Boxplot**
+
+```{r, fig.align='center'}
+# <your code here>
+# Hint: similar to the plot that you already created, but you will use the 
+# residuals (residuals_trans) from the transformed model
+```
+
+**(b) Histogram**
+
+```{r, fig.align='center'}
+# <your code here>
+# Hint: similar to the plot that you already created, but you will use the 
+# residuals (residuals_trans) from the transformed model
+```
+
+**(c) Normal Probability Plot**
+
+```{r, fig.align='center'}
+# <your code here>
+# Hint: similar to the plot that you already created, but you will use the 
+# residuals (residuals_trans) from the transformed model
+```
+
+**(d) Shapiro-Wilk Test**
+
+```{r}
+# <your code here>
+# Hint: similar to the plot that you already created, but you will use the 
+# residuals (residuals_trans) from the transformed model
+```
+
+< your response here >
+
+
+### 4. (E) The residuals have equal (constant) variance across all values of X (homoscedastic) - met?
+
+**(a) Residuals vs. Fitted Values Plot**
+
+```{r, fig.align='center'}
+# <your code here>
+# Hint: similar to the plot that you already created, but you will use the 
+# residuals (residuals_trans) from the transformed model. You can also call
+# the plot you created in part 1 of this section.
+```
+
+**(c) Brown-Forsythe Test**
+```{r}
+# <your code here>
+# Hint: similar to the plot that you already created, but you will use the 
+# residuals (residuals_trans) from the transformed model
+```
+
+< your response here >
+
+
+## Repeat
+
+We will not do this here, but it would be good to try a few more transformations, view the diagnostics, and from there determine the "best" model fit among all the transformed models.
+
+
+## Summary and Conclusions
+
+*Always* start by plotting your data (exploratory data analysis: view data, create scatterplot, summarize data, etc.) before jumping into an analysis or fitting a model. We saw MPG and Weight looked to be linearly correlated, so we chose to fit a simple linear regression model to the data. Once the model was fit, we ran diagnostics to ensure the assumptions underlying the linear regression model were met. We found some evidence to suggest that the residuals were not homoscedastic or normally distributed. To fix this, we applied a Box-Cox approach and determined the log transform would be the best transformation for MPG. We applied this transformation, refit the model, and re-checked the assumptions. The assumptions all appear to be met. In practice, we could try additional transformations, compare the transformed models, and then pick the best model. Once we have a model that satisfies the assumptions, we can look at our model coefficients and p-values and safely draw conclusions.
+
+Note: When interpreting the model coefficients, remember you are on a transformed scale. For example, to interpret the slope of -0.0003845 from the transformed model, we would say, "Average MPG decreases by 0.038% for every 1 pound increase in Weight."
+
