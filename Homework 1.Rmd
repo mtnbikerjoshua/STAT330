@@ -88,7 +88,8 @@ wind.plot + geom_smooth(method = "lm", se = FALSE)
 #### 11. Apply linear regression to the data, and save the residuals and fitted values to the `wind` data frame. Print out a summary of the results from the `lm` function.
 
 ```{r}
-(model <- lm(CSpd ~ RSpd, data = wind))
+model <- lm(CSpd ~ RSpd, data = wind)
+summary(model)
 wind <- wind %>%
   mutate(resid = resid(model), fitted_val = fitted(model))
 ```
