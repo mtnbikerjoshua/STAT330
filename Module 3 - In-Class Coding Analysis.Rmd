@@ -1,0 +1,228 @@
+---
+title: "Module 3 - Simple Linear Regression Model Inference"
+subtitle: <center> <h1>In-Class Analysis</h1> </center>
+output: html_document
+---
+
+<style type="text/css">
+h1.title {
+  font-size: 40px;
+  text-align: center;
+}
+</style>
+
+```{r setup, include=FALSE}
+# load packages here
+library(tidyverse)
+```
+
+## Data and Description
+
+**This is the same data set used in the Module 3 Course Notes. You can check all of the code you create here with the output from the course notes to verify you are getting the correct results.**
+
+Recent increases in gas prices make buyers more prone to purchase a car with better gas mileage, as measured by the **miles per gallon (MPG)**. Because of this, car manufacturers are increasingly trying to produce the car that gives the best MPG. Complicating this process are the many factors that go into determining what gas mileage a car will achieve on the road.
+
+One such factor is the **weight** of the car. While it is generally understood that heavier cars will experience fewer MPG, there is little understanding of how much an increase in weight will lead to a decrease MPG. By understanding this relationship, manufacturers will be able to perform a cost--benefit analysis that will assist them in their vehicle production.
+
+The MPG data set contains measurements of the **weight (column 1)** (in pounds) and **MPG (column 2)** of 289 cars. Download the MPGData.txt file from Canvas, and put it in the same folder as this R Markdown file. 
+
+Do the following:
+
+1. Read in the data set, and take a look at the top few rows.
+2. Apply linear regression to the *non-transformed* data (Note: you should do this for the transformed data set, but for sake of simplicity and illustration, we will use the non-transformed data here just as an example)
+3. Save the model fit as a variable, and save the residuals and fitted values to the `cars` data frame.
+4. Create a scatterplot of the data, and overlay the *non-transformed* linear regression line.
+
+```{r}
+# Note: code all from Module 1
+cars <- read.csv("MPGData.txt", header = TRUE, sep = " ")
+head(cars)
+
+cars_lm <- lm(MPG ~ Weight, data = cars)
+summary(cars_lm)
+cars$residuals <- cars_lm$residuals
+cars$fittedMPG <- cars_lm$fitted.values
+
+# I'm putting the data =  and mapping =  in geom_point() instead of ggplot()
+# since it will make plotting easier later on. Note that putting them in 
+# ggplot() makes them "global" to the entire plot, whereas putting them in 
+# geom_point() makes them "local" to only geom_point(), which is why I need to 
+# add them again for geom_smooth()
+cars_base_plot <- ggplot() +
+  geom_point(data = cars, mapping = aes(x = Weight, y = MPG)) +
+  theme_bw() +
+  scale_x_continuous(limits = c(1500, 3500)) +
+  scale_y_continuous(limits = c(10, 50)) +
+  theme(aspect.ratio = 1)
+
+cars_base_plot  + 
+  geom_smooth(data = cars, mapping = aes(x = Weight, y = MPG), 
+              method = "lm", se = FALSE)
+```
+
+## Statistical Inference for the Slope
+
+#### Using the `summary` function, does the standard error for the slope match the value in the course notes?
+
+```{r}
+# <your code here>
+```
+
+#### Use the `confint` R function to create a 95% confidence interval for the slope. Does this match the interval in the course notes?
+ 
+```{r}
+confint(cars_lm, level = 0.95, parm = "Weight")
+```
+
+#### Use the `summary` and `pt` R functions to conduct a hypothesis test on the slope. The test statistic and p-value you obtain should match those in the output from `summary`. Note that the `summary` output results are from a two-sided test.
+
+```{r}
+t.stat <- (cars_lm$coefficients[2] - 0) / summary(cars_lm)$coefficients["Weight","Std. Error"]
+pt(t.stat, df = (nrow(cars) - 2), lower.tail = TRUE) * 2
+```
+
+## Statistical Inference for the Mean
+
+#### Using the `predict` function, calculate a 95% confidence interval for the average of $Y$ when $x=3000$ lbs. 
+```{r}
+predict(cars_lm, newdata = data.frame(Weight = 3000),
+        interval = "confidence", level = 0.95)
+```
+
+#### Using the `predict` function with a data frame of many $x$ values (use the `seq` R function starting at the minimum of $X$ and going to the maximum of $X$), create a confidence band for the average of $Y$. Overlay this confidence band on your base scatterplot using the `geom_line` function twice. Your plot should match the plot in the course notes. 
+
+```{r}
+weight_values <- seq(min(cars$Weight), max(cars$Weight), length = 100)
+conf_int_mean <- predict(cars_lm, newdata = data.frame(Weight = weight_values),
+        interval = "confidence", level = 0.95)
+preds <- data.frame("weight_values", conf_int_mean)
+```
+
+#### Note: Here is code that plots the confidence interval for the average of $Y$ using the transformed model (that we determined was the more appropriate model).
+
+```{r}
+# linear model with MPG log transformed
+cars_lm_trans <- lm(log(MPG) ~ Weight, data = cars)
+# Sequence of Weight values that we are interested in using to predict MPG  
+weight_values <- seq(min(cars$Weight), max(cars$Weight), length = 100)
+# 95% confidence intervals of **log(MPG)** across those values of Weight
+conf_int_mean_trans <- predict(cars_lm_trans, 
+                               newdata = data.frame(Weight = weight_values), 
+                               interval = "confidence",
+                               level = 0.95)
+# Predictions of **MPG** (back-transformed) across those values of Weight
+conf_int_mean_preds <- exp(conf_int_mean_trans)  # use exp to "undo" log trans
+# Store results in a data frame for plotting
+preds <- data.frame("weight_values" = weight_values, conf_int_mean_preds)
+
+# Plot the predictions
+cars_base_plot + 
+  geom_line(data = preds, mapping = aes(x = weight_values, y = fit), 
+            color = "blue", size = 1.5) + 
+  geom_line(data = preds, mapping = aes(x = weight_values, y = lwr), 
+            color = "#d95f02", size = 1.5) +
+  geom_line(data = preds, mapping = aes(x = weight_values, y = upr), 
+            color = "#d95f02", size = 1.5)
+```
+
+## Statistical Inference for the Individual Observations
+
+#### Using the `predict` function, calculate a 95% prediction interval for $Y$ when $x=3000$ lbs. 
+```{r}
+predict(cars_lm, newdata = data.frame(Weight = 3000),
+        interval = "prediction", level = 0.95)
+```
+
+#### Using the `predict` function with a data frame of many $x$ values (use the `seq` R function starting at the minimum of $x$ and going to the maximum of $x$), create a prediction band for $y$ across all values of $x$. Overlay this prediction band on your base scatterplot using the `geom_line` function twice. Your plot should match the plot in the course notes. *Note: you will get a warning message about 10 rows removed. To fix this, simply adjust the y-axis limit to go down to 0 (since the prediction band goes lower on the y-axis than the points). This will result in another warning message letting you know you are replacing the original y-axis scale, which you can ignore.*
+
+```{r}
+weight_values <- seq(min(cars$Weight), max(cars$Weight), length = 100)
+conf_int_predict <- predict(cars_lm, newdata = data.frame(Weight = weight_values),
+        interval = "prediction", level = 0.95)
+preds <- data.frame("weight_values", conf_int_predict)
+```
+
+#### Note: Here is code that plots the prediction interval for individual observations using the transformed model (that we determined was the more appropriate model).
+
+```{r}
+# linear model with MPG log transformed
+cars_lm_trans <- lm(log(MPG) ~ Weight, data = cars)
+# Sequence of Weight values that we are interested in using to predict MPG  
+weight_values <- seq(min(cars$Weight), max(cars$Weight), length = 100)
+# 95% confidence intervals of **log(MPG)** across those values of Weight
+conf_int_mean_trans <- predict(cars_lm_trans, 
+                               newdata = data.frame(Weight = weight_values), 
+                               interval = "prediction",
+                               level = 0.95)
+# Predictions of **MPG** (back-transformed) across those values of Weight
+conf_int_mean_preds <- exp(conf_int_mean_trans)  # use exp to "undo" log trans
+# Store results in a data frame for plotting
+preds <- data.frame("weight_values" = weight_values, conf_int_mean_preds)
+
+# Plot the predictions
+cars_base_plot + 
+  geom_line(data = preds, mapping = aes(x = weight_values, y = fit), 
+            color = "blue", size = 1.5) + 
+  # plot the fitted PI bands
+  geom_line(data = preds, mapping = aes(x = weight_values, y = lwr), 
+            color = "#1b9e77", size = 1.5) +
+  geom_line(data = preds,mapping = aes(x = weight_values, y = upr), 
+            color = "#1b9e77", size = 1.5) +
+  scale_y_continuous(limits = c(10, 60),  # raise y-axis bound to see entire line
+                     breaks = seq(10, 60, by = 10))
+```
+
+## Model Evaluation Metrics
+
+Here are the ANOVA (sums of squares) components:
+```{r}
+anova <- aov(cars_lm)  # get ANOVA components
+cars_anova <- summary(anova)[[1]]  # save data in a usable form
+cars_anova
+```
+
+Using these ANOVA components and the `lm` regression output, we can obtain several measures of the usefulness of the `cars_lm` model.
+
+#### Calculate the MSE (Mean Square Error) using the values from the ANOVA table above. (Your answer should be 22.31.)
+
+```{r}
+# <your code here>
+# Hint: MSE = SSE / df_error     ("Residuals" = error)
+mse <- cars_anova["Residuals", "Sum S1"] / cars_anova["Residuals", "DF"]
+```
+
+#### Calculate the RMSE (Root Mean Square Error). (Your answer should be 4.72.)
+
+```{r}
+rmse <- sqrt(mse)
+```
+
+#### Calculate the MAE (Mean Absolute Error). (Your answer should be 3.64.)
+
+```{r}
+mae <- sum(abs(cars$MPG - cars$fittedMPG)) / cars_lm$df.residual
+```
+
+#### Calculate R-Squared (Coefficient of Determination) using the values from the ANOVA table above. The value you get should match the value from the `summary` function you used above. (Your answer should be 0.50.)
+
+```{r}
+r2 <- cars_anova["Weight", "Sum Sq"] /
+  (cars_anova["Weight", "Sum Sq"] + cars_anova["Residuals", "Sum Sq"])
+
+summary(cars_lm)$r.squared
+# Hint: R2 = SSR / SST     
+# ("Weight" = Regression/Model, "Residuals" = error, 
+#   Total = Regression/Model + Error)
+```
+
+#### Locate the Adjusted R-Squared value from the `summary` function. (Your should see 0.5031.)
+
+```{r}
+# <your code here>
+```
+
+#### Locate the F-Statistic and associated p-value from the `summary` function. (Your should see an F statistic of 292.60 and a very small p-value (smaller than 2.2x10^-16).)
+
+```{r}
+# <your code here>
+```
