@@ -28,7 +28,7 @@ The MPG data set contains measurements of the **weight (column 1)** (in pounds) 
 
 Do the following (what we've done before):
 
-1. Read in the data set, take a look at the top few rows, and look at a summary of the data.    
+1. Read in the data set, take a look at the top few rows, and look at a summary of the data.  
 2. Create a scatterplot of the data with Weight on the x-axis and MPG on the y-axis, and overlay the linear regression line.
 3. Apply linear regression to the data, and save the residuals and fitted values to the `cars` data frame.
 
@@ -56,32 +56,40 @@ cars$fittedMPG <- cars_lm$fitted.values
 
 ## Diagnostics: Check That Assumptions are Met
 
-### 1. (L) X vs Y is linear
+### 1. (L) x vs y is linear
 
 **(a) Scatterplot**
-
 ```{r, fig.align='center'}
-# <your code here>
-# Hint: same plot that you already created, just print the variable storing the
-# plot
+cars_base_plot
 ```
+
+The trend appears linear (not quadratic, exponential, etc.), so this assumption appears to be met.
 
 **(b) Residuals vs. Fitted Values Plot**
 
 ```{r, fig.align='center'}
-# <your code here>
 # save the plot as a variable since we will use it later for other assumptions
-# Hint: autoplot(cars_lm, which = 1, ncol = 1, nrow = 1)
+cars_resid_vs_fit <- autoplot(cars_lm, which = 1, ncol = 1, nrow = 1) +
+  theme_bw() +
+  scale_y_continuous(limits = c(-20, 20)) +
+  scale_x_continuous(limits = c(15, 40)) +
+  theme(aspect.ratio = 1)
+cars_resid_vs_fit
 ```
+
+This plot labels the three most "extreme" data points (by their row numbers) in the data set. The colored, solid line should roughly follow the dotted, horizontal line at 0. This plot suggests we can assume a linear relationship between MPG and Weight.
 
 **(c) Residuals vs. Predictor Plot**
-
 ```{r, fig.align='center'}
-# <your code here>
-# ggplot() and geom_point()
+ggplot(data = cars, mapping = aes(x = Weight, y = residuals)) +
+  geom_point() +
+  theme_bw() +
+  scale_y_continuous(limits = c(-20, 20)) +
+  scale_x_continuous(limits = c(1500, 3500)) + 
+  theme(aspect.ratio = 1)
 ```
 
-< your response here >
+We should see an even spread of points around the horizontal line to conclude the two variables have a linear relationship. This plots suggests MPG and Weight are linearly associated.
 
 
 ### 2. (I) The residuals are independent across all values of y
@@ -109,98 +117,110 @@ ggplot(data = cars, mapping = aes(x = 1:dim(cars)[1], y = residuals)) +
 **(a) Boxplot**
 
 ```{r, fig.align='center'}
-# <your code here>
-# save the plot as a variable since we will use it later for other assumptions
-# Hint: ggplot() and geom_boxplot()
+cars_boxplot <- ggplot(data = cars, mapping = aes(y = residuals)) +
+  geom_boxplot() +
+  theme_bw() + 
+  scale_y_continuous(limits = c(-20, 20)) +
+  theme(aspect.ratio = 1)
+cars_boxplot
 ```
+
+The boxplot should be centered at 0, have equal area in the box on both sizes of the median, and should have whiskers similar in length and few outliers. This plot suggests normality except the outliers at the top, which suggests slight right-skewness - a possible cause for concern.
 
 **(b) Histogram**
 
 ```{r, fig.align='center'}
-# save the plot as a variable since we will use it later for other assumptions
 cars_hist <- ggplot(data = cars, mapping = aes(x = residuals)) + 
-  # when using this code for future data sets, make sure to change the binwidth: 
   geom_histogram(mapping = aes(y = ..density..), binwidth = 2) +
-  # stat_function() overlays the red normal curve on the histogram
   stat_function(fun = dnorm, 
                 color = "red", 
                 size = 2,
                 args = list(mean = mean(cars$residuals), 
-                            sd = sd(cars$residuals))) 
-# <additional code here to make the plot look pretty>
+                            sd = sd(cars$residuals))) +
+  theme_bw() + 
+  scale_x_continuous(limits = c(-20, 20)) +
+  scale_y_continuous(limits = c(0, 0.1)) +
+  theme(aspect.ratio = 1)
 cars_hist
 ```
+
+The histogram should follow the superimposed, red normal curve. The distribution of residuals looks slightly right skewed.
 
 **(c) Normal Probability Plot**
 
 ```{r, fig.align='center'}
-# <your code here>
-# save the plot as a variable since we will use it later for other assumptions
-# Hint: autoplot(cars_lm, which = 2, ncol = 1, nrow = 1) 
+cars_qq <- autoplot(cars_lm, which = 2, ncol = 1, nrow = 1) +
+  theme_bw() + 
+  scale_x_continuous(limits = c(-3, 3)) +
+  scale_y_continuous(limits = c(-4, 4)) +
+  theme(aspect.ratio = 1)
+cars_qq
 ```
+
+The points should follow the dashed, diagonal line. This plot shows non-negligible deviation from the line - especially at the upper theoretical quantiles. This is cause for concern.
 
 **(d) Shapiro-Wilk Test**
 
 ```{r}
-# <your code here>
-# Hint: shapiro.test()
+shapiro.test(cars_lm$residuals)
 ```
 
-< your response here >
+Since the p-value is small, we reject the null hypothesis. We conclude that the data do not come from a normal distribution.
 
 
-### 4. (E) The residuals have equal (constant) variance across all values of X (homoscedastic)
+### 4. (E) The residuals have constant variance across all values of x
 
 **(a) Residuals vs. Fitted Values Plot**
 
 ```{r, fig.align='center'}
-# <your code here>
-# Hint: same plot that you already created, just print the variable storing the
-# plot
+cars_resid_vs_fit
 ```
 
-**(b) Brown-Forsythe Test**
+The residuals should be equally spread around the horizontal line. There may be slightly more spread at larger fitted values than at smaller fitted values. This is mildly concerning.
+
+**(c) Brown-Forsythe Test**
 ```{r}
 grp <- as.factor(c(rep("lower", floor(dim(cars)[1] / 2)), 
                    rep("upper", ceiling(dim(cars)[1] / 2))))
 leveneTest(cars[order(cars$Weight), "residuals"] ~ grp, center = median)
 ```
 
-< your response here >
+Since the p-value is very small (highly significant), we reject the null hypothesis of constant variance and conclude the variance is likely not constant (heterogeneity).
 
 
 ### 5. (A) The model describes all observations (i.e., there are no influential points)
 
 **(a) Scatterplot**
 ```{r, fig.align='center'}
-# <your code here>
-# Hint: same plot that you already created, just print the variable storing the
-# plot
+cars_base_plot
 ```
+
+There may be some potential influential points, but none look striking.
 
 **(b) Boxplot**
 
 ```{r, fig.align='center'}
-# <your code here>
-# Hint: same plot that you already created, just print the variable storing the
-# plot
+cars_boxplot
 ```
+
+Roughly 9 potential outliers.
 
 **(c) Histogram**
 
 ```{r, fig.align='center'}
-# <your code here>
-# Hint: same plot that you already created, just print the variable storing the
-# plot
+cars_hist
 ```
+
+No apparent outliers.
 
 **(d) Normal Probability Plot**
 
 ```{r, fig.align='center'}
-# <your code here>
-# Hint: same plot that you already created, just print the variable storing the
-# plot
+cars_qq
 ```
+
+Possible outliers at the upper right area of the plot.
+
 
 **(e) Cook's Distance**
 
@@ -227,6 +247,7 @@ cars %>%
   filter(cooksd > 4 / length(cooksd)) %>%  # select potential outliers
   arrange(desc(cooksd))  # order from largest Cook's distance to smallest
 ```
+There are 14 potential outliers, according to Cook's distance. I wouldn't be terrbily concerned about any of them. Potentially one, but it isn't terribly far from the rest of the data.
 
 **(f) DFBETAS**
 
@@ -264,6 +285,7 @@ cars %>%
 #   filter(abs(dfbetas_weight) > 1) %>%  # select potential influential pts
 #   arrange(desc(abs(dfbetas_weight)))  # order from largest DFBETAS to smallest
 ```
+No points are that far away from the rest. I would say no influential points here.
 
 **(g) DFFITS**
 
@@ -303,41 +325,39 @@ cars %>%
 #   filter(abs(dffits) > 1) %>%  # select potential influential pts
 #   arrange(desc(abs(dffits)))  # order from largest DFFITS to smallest
 ```
+Again, I'm not too concerened with influential points based on this plot. There may be some outliers, as indicated by other plots, but I don't think any of them are terribly influential. I would move on saying this assumption is met.
 
-< your response here >
-
-
-### 6. (R) Additional predictor variables are not required 
+### 6. Additional predictor variables are unnecessary 
 
 This assumption is very likely not met. There are many other variables that could help predict MPG like the number of cylinders, vehical type, etc.
 
 
 
-### Summarize findings: 
+## Summarize Findings:
 
-#### 1. (L) X vs Y is linear - met?
+#### 1. x vs y is linear
 
-< your response here >
+From the diagnostics, this assumption appears to be met.
 
-#### 2. (I) The residuals are independent - met?
+#### 2. The residuals are independent across all values of y
 
-< your response here >
+We do not know if this assumption is met or not since we are lacking information on how the data was collected. 
 
-#### 3. (N) The residuals are normally distributed and centered at zero - met?
+#### 3. The residuals are normally distributed and centered at zero
 
-< your response here >
+The residuals look slightly right skewed - we can do better. We will transform MPG to try to improve this. This assumption is not met.
 
-#### 4. (E) The residuals have equal (constant) variance across all values of X (homoscedastic) - met?
+#### 4. The residuals have constant variance across all values of x
 
-< your response here >
+The diagnostics indicate possible heteroscedasticity. We may want to address this by transforming MPG. This assumption is not met.
 
-#### 5. (A) The model describes all observations (i.e., there are no influential points) - met?
+#### 5. The model describes all observations (i.e., there are no influential points)
 
-< your response here >
+I think this assumption is met. While there may be some outliers, none seem to be terribly influential.
 
-#### 6. (R) Additional predictor variables are not required - met?
+#### 6. Additional predictor variables are unnecessary 
 
-< your response here >
+This assumption is likely not met, as discussed above.
 
 
 
@@ -350,17 +370,17 @@ bc <- boxCox(cars_lm)  # plot curve
 bc$x[which.max(bc$y)]  # pull out the "best" lambda value
 ```
 
-Let's transform MPG using the *** transform, refit the model, and run the diagnostics again to gauge improvement.
+The "best" lambda value is -0.14, but a lambda value of 0 is much more interpretable, and, since 0 is contained in the 95% confidence interval, we will use lambda = 0 (corresponds to a log transformation). 
+
+Let's transform MPG using the log transform, refit the model, and run the diagnostics again to gauge improvement.
+
 
 ```{r}
-# This code should transform the Y variable based on the Box-Cox results.
-# Save these transformed values (named MPG_trans) to the cars data frame in a 
-# new column.
-# Then, use the lm function to create a new model with the transformed values,
-# and call it cars_lm_trans.
-# Save the transformed residuals and fitted values to the cars data frame. Call
-# them residuals_trans and fittedMPG_trans
-# < your code here >
+cars$MPG_trans <- log(cars$MPG)
+cars_lm_trans <- lm(MPG_trans ~ Weight, data = cars)
+summary(cars_lm_trans)
+cars$residuals_trans <- cars_lm_trans$residuals
+cars$fittedMPG_trans <- cars_lm_trans$fitted.values
 ```
 
 It can be informative to view the line (on the log scale) as what it looks like as a curve (on the regular scale). Here is how you plot the transformed regression model on original scale of the data.
@@ -383,100 +403,127 @@ cars_base_plot +
             size = 1.5, color ="blue")
 ```
 
+### Re-Check Assumptions with new Y values
 
 
-
-
-## Re-Check Assumptions with new Y values (if you have time during this class period). (Note: I've excluded some assumptions for sake of time.)
-
-
-### 1. (L) X vs Y is linear
+#### 1. (L) x vs y is linear
 
 **(a) Scatterplot**
 
 ```{r, fig.align='center'}
-# <your code here>
-# Hint: similar to the plot that you already created, but you will plot log(MPG)
-# on the y-axis
+ggplot(data = cars, mapping = aes(x = Weight, y = MPG_trans)) +
+  geom_point() +
+  theme_bw() +
+  ylab("log(MPG)") +
+  scale_x_continuous(limits = c(1500, 3500)) +
+  scale_y_continuous(limits = c(2.5, 4)) +
+  theme(aspect.ratio = 1)
 ```
+
+The trend still appears linear.
 
 **(b) Residuals vs. Fitted Values Plot**
 
 ```{r, fig.align='center'}
-# <your code here>
-# Hint: similar to the plot that you already created, but you will use the 
-# residuals (residuals_trans) from the transformed model
+cars_resid_vs_fit_trans <- autoplot(cars_lm_trans, 
+                                    which = 1, ncol = 1, nrow = 1) +
+  theme_bw() +
+  scale_y_continuous(limits = c(-0.75, 0.75)) +
+  scale_x_continuous(limits = c(2.8, 3.8)) +
+  theme(aspect.ratio = 1)
+cars_resid_vs_fit_trans
 ```
+
+This plot suggests a linear relationship between MPG_trans and Weight.
 
 **(c) Residuals vs. Predictor Plot**
 ```{r, fig.align='center'}
-# <your code here>
-# Hint: similar to the plot that you already created, but you will use the 
-# residuals (residuals_trans) from the transformed model
+ggplot(data = cars, mapping = aes(x = Weight, y = residuals_trans)) +
+  geom_point() +
+  theme_bw() +
+  scale_y_continuous(limits = c(-0.75, 0.75)) +
+  scale_x_continuous(limits = c(1500, 3500)) +
+  theme(aspect.ratio = 1)
 ```
 
-< your response here >
+Still suggest a linear relationship.
 
-
-### 3. (N) The residuals are normally distributed and centered at zero
+#### 3. (N) The residuals are normally distributed and centered at zero
 
 **(a) Boxplot**
 
 ```{r, fig.align='center'}
-# <your code here>
-# Hint: similar to the plot that you already created, but you will use the 
-# residuals (residuals_trans) from the transformed model
+ggplot(data = cars, mapping = aes(y = residuals_trans)) +
+  geom_boxplot() +
+  theme_bw() + 
+  scale_y_continuous(limits = c(-0.75, 0.75)) +
+  theme(aspect.ratio = 1)
 ```
+
+The boxplot looks okay. A slight right-skew is evident.
 
 **(b) Histogram**
 
 ```{r, fig.align='center'}
-# <your code here>
-# Hint: similar to the plot that you already created, but you will use the 
-# residuals (residuals_trans) from the transformed model
+ggplot(data = cars, mapping = aes(x = residuals_trans)) + 
+  geom_histogram(mapping = aes(y = ..density..), binwidth = 0.1) +
+  stat_function(fun = dnorm, 
+                color = "red", 
+                size = 2,
+                args = list(mean = mean(cars$residuals_trans), 
+                            sd = sd(cars$residuals_trans))) +
+  theme_bw() + 
+  scale_x_continuous(limits = c(-0.75, 0.75)) +
+  scale_y_continuous(limits = c(0, 3)) +
+  theme(aspect.ratio = 1)
 ```
+
+The residuals looks normally distributed.
 
 **(c) Normal Probability Plot**
 
 ```{r, fig.align='center'}
-# <your code here>
-# Hint: similar to the plot that you already created, but you will use the 
-# residuals (residuals_trans) from the transformed model
+autoplot(cars_lm_trans, which = 2, ncol = 1, nrow = 1) +
+  theme_bw() + 
+  scale_x_continuous(limits = c(-3, 3)) +
+  scale_y_continuous(limits = c(-4, 4)) +
+  theme(aspect.ratio = 1)
 ```
+
+The points follow the diagonal line at lot more closely than they did prior to transforming MPG. The tails are pulled in a lot more than they were previously. This looks like a pretty good QQ plot!
 
 **(d) Shapiro-Wilk Test**
 
 ```{r}
-# <your code here>
-# Hint: similar to the plot that you already created, but you will use the 
-# residuals (residuals_trans) from the transformed model
+shapiro.test(cars$residuals_trans)
 ```
 
-< your response here >
+The p-value is not significant, indicating the data are normally distributed (we fail to reject the null hypothesis).
 
 
-### 4. (E) The residuals have equal (constant) variance across all values of X (homoscedastic) - met?
+
+
+#### 4. (E) The residuals have constant variance across all values of x
 
 **(a) Residuals vs. Fitted Values Plot**
 
 ```{r, fig.align='center'}
-# <your code here>
-# Hint: similar to the plot that you already created, but you will use the 
-# residuals (residuals_trans) from the transformed model. You can also call
-# the plot you created in part 1 of this section.
+cars_resid_vs_fit_trans
 ```
+
+The residuals seem equally spread around the horizontal line. Looks good.
 
 **(c) Brown-Forsythe Test**
 ```{r}
-# <your code here>
-# Hint: similar to the plot that you already created, but you will use the 
-# residuals (residuals_trans) from the transformed model
+grp <- as.factor(c(rep("lower", floor(dim(cars)[1] / 2)), 
+                   rep("upper", ceiling(dim(cars)[1] / 2))))
+leveneTest(cars[order(cars$Weight), "residuals_trans"] ~ grp, center = median)
 ```
 
-< your response here >
+The p-value is non-significant, so homoscedasticity is met
 
 
-## Repeat
+### Repeat
 
 We will not do this here, but it would be good to try a few more transformations, view the diagnostics, and from there determine the "best" model fit among all the transformed models.
 
@@ -486,4 +533,8 @@ We will not do this here, but it would be good to try a few more transformations
 *Always* start by plotting your data (exploratory data analysis: view data, create scatterplot, summarize data, etc.) before jumping into an analysis or fitting a model. We saw MPG and Weight looked to be linearly correlated, so we chose to fit a simple linear regression model to the data. Once the model was fit, we ran diagnostics to ensure the assumptions underlying the linear regression model were met. We found some evidence to suggest that the residuals were not homoscedastic or normally distributed. To fix this, we applied a Box-Cox approach and determined the log transform would be the best transformation for MPG. We applied this transformation, refit the model, and re-checked the assumptions. The assumptions all appear to be met. In practice, we could try additional transformations, compare the transformed models, and then pick the best model. Once we have a model that satisfies the assumptions, we can look at our model coefficients and p-values and safely draw conclusions.
 
 Note: When interpreting the model coefficients, remember you are on a transformed scale. For example, to interpret the slope of -0.0003845 from the transformed model, we would say, "Average MPG decreases by 0.038% for every 1 pound increase in Weight."
+
+<!-- - *italics* -->
+<!-- - **bold**, and -->
+<!-- - `code font` -->
 

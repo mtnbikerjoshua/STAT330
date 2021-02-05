@@ -14,6 +14,7 @@ h1.title {
 
 ```{r setup, include=FALSE}
 library(tidyverse)
+library(ggfortify)
 ```
 
 ## Data and Description
@@ -26,7 +27,7 @@ The Stopping Distance data set compares the **distance (column 2)** (in feet) re
 
 #### 1. Read in the data set, and call the data frame "stop". Print a summary of the data and make sure the data makes sense.
 
-```{r}
+```{r, message=FALSE}
 (stop <- read_table2("StoppingDistance.txt"))
 summary(stop)
 ```
@@ -38,10 +39,10 @@ summary(stop)
   geom_point() +
   xlab("Car Speed (mph)") +
   ylab("Stopping Distance (ft)") +
-  xlim(0, 50) +
-  ylim(-10, 150) +
   coord_fixed() +
-  theme_minimal())
+  theme_minimal() +
+  scale_x_continuous(limits = c(0, 50), minor_breaks = NULL) +
+  ylim(NA, 150))
 ```
 
 #### 3. Briefly describe the relationship between Speed and Distance. (Hint: you should use 2 or 3 key words.)
@@ -58,14 +59,16 @@ stop.plot +
 #### 5. Apply linear regression to the data (no transformations), and save the residuals and fitted values to the `stop` dataframe.
 
 ```{r}
-(stop.lm <- lm(Distance ~ Speed, data = stop))
-stop %>%
+stop.lm <- lm(Distance ~ Speed, data = stop)
+summary(stop.lm)
+stop <- stop %>%
   mutate(resid = stop.lm$residuals, fit = stop.lm$fitted.values)
 ```
 
 #### 6. Mathematically write out the fitted simple linear regression model for this data set using the coefficients you found above. Do not use "x" and "y" in your model - use variable names that are fairly descriptive.
 
-$\widehat{\text{Distance}}_i=-20.131+3.142\cdot\widehat{\text{Speed}}_i$
+$\widehat{\text{Distance}}_i=-20.131+3.142\cdot\widehat{\text{Speed}}_i$\
+$\epsilon\sim N(0, 11.77^2)$
 
 
 
@@ -74,30 +77,70 @@ $\widehat{\text{Distance}}_i=-20.131+3.142\cdot\widehat{\text{Speed}}_i$
 #### 7. (L) X vs Y is linear (use at least two diagnostic tools)
 
 ```{r, fig.align='center'}
-# <your code here>
+# Scatterplot
+stop.plot
+
+# Resid vs. Fitted
+stop.resid_fitted <- autoplot(stop.lm, which = 1, ncol = 1) +
+  theme_minimal() +
+  coord_fixed()
 ```
 
-< your response here >
+No, the data is slightly non-linear
 
 #### 8. (I) The residuals are independent (no diagnostic tools - just think about how the data was collected and briefly write your thoughts)
 
-< your response here >
+Given the information we have, we cannot know whether the data is independent. There could be some dependence based on the cars used in the experiment of the times at which the data was collected.
 
 #### 9. (N) The residuals are normally distributed and centered at zero (use at least three diagnostic tools)
 
 ```{r, fig.align='center'}
-# <your code here>
+# Q-Q
+autoplot(stop.lm, which = 2, ncol = 1, nrow = 1) +
+  theme_light() +
+  coord_fixed()
+
+# Histogram
+ggplot(data = stop, mapping = aes(x = resid(stop.lm))) +
+  geom_histogram(mapping = aes(y = ..density..), binwidth = 3) +
+  stat_function(fun = dnorm, 
+                color = "blue",
+                args = list(mean = mean(cars$residuals), 
+                            sd = sd(cars$residuals))) +
+  xlab("Residuals") +
+  ylab("Density") +
+  theme_light()
+
+# Boxplot
+ggplot(data = stop, mapping = aes(y = resid(stop.lm))) +
+  geom_boxplot() +
+  stat_summary(mapping = aes(x = 0),
+               fun = mean, geom = "point",
+               shape = 4, size = 2, color = "darkred") +
+  theme_classic() +
+  theme(aspect.ratio = 2,
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank()) +
+  scale_y_continuous(limits = c(-30, 40), breaks = seq(-30, 40, 10)) +
+  ylab("Residuals") +
+  xlab("")
 ```
 
-< your response here >
+The residuals are somewhat right-skewed and not normally distributed, therefore this assumption is not met.
 
 #### 10. (E) The residuals have equal/constant variance across all values of X (use two diagnostic tools)
 
 ```{r, fig.align='center'}
-# <your code here>
+#Resid vs Fitted
+stop.resid_fitted
+
+# Brown-Forsyth Test
+grp <- as.factor(c(rep("lower", floor(dim(stop)[1] / 2)), 
+                   rep("upper", ceiling(dim(stop)[1] / 2))))
+leveneTest(pull(stop[order(stop$Speed), "resid"]) ~ grp, center = median)
 ```
 
-< your response here >
+The variance is not very constant as seen in the Residuals vs. Fitted Values plot and the Brown-Forsyth statistic is large enough to cause some doubt. This assumption is not met.
 
 #### 11. (A) The model describes all observations (i.e., there are no influential points) (use at least four diagnostic tools)
 
