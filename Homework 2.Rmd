@@ -96,9 +96,9 @@ Given the information we have, we cannot know whether the data is independent. T
 
 ```{r, fig.align='center'}
 # Q-Q
-autoplot(stop.lm, which = 2, ncol = 1, nrow = 1) +
+(stop.qq <- autoplot(stop.lm, which = 2, ncol = 1, nrow = 1) +
   theme_light() +
-  coord_fixed()
+  coord_fixed())
 
 # Histogram
 ggplot(data = stop, mapping = aes(x = resid(stop.lm))) +
@@ -145,10 +145,55 @@ The variance is not very constant as seen in the Residuals vs. Fitted Values plo
 #### 11. (A) The model describes all observations (i.e., there are no influential points) (use at least four diagnostic tools)
 
 ```{r, fig.align='center'}
-# <your code here>
+#Q-Q
+stop.qq
+
+# Cook's Distance
+stop <- stop %>% mutate(cooksd = cooks.distance(stop.lm))
+top3cd <- as.numeric(names(sort(stop$cooksd, decreasing = TRUE)[1:3]))
+
+ggplot() +
+  geom_point(data = stop,
+             mapping = aes(x = as.numeric(rownames(stop)), 
+                           y = cooksd)) +
+  geom_text(mapping = aes(x = top3cd,
+                          y = stop$cooksd[top3cd],
+                          label = top3cd)) +
+  theme_bw() +
+  ylab("Cook's Distance") +
+  xlab("Observation Number") +
+  geom_hline(mapping = aes(yintercept = 4 / length(stop$cooksd)),
+             color = "red", linetype = "dashed") +
+  theme(aspect.ratio = 1)
+
+# DFBETAS
+stop <- stop %>%
+  mutate(dfbetas_speed = dfbetas(stop.lm)[, "Speed"])
+names(stop$dfbetas_speed) <- 1:nrow(stop)
+top3dfbeta <- as.numeric(names(
+  sort(stop$dfbetas_speed, decreasing = TRUE)[1:3]
+))
+
+# Plot the DFBETAS against the observation number
+ggplot() + 
+  geom_point(data = stop,
+             mapping = aes(x = as.numeric(rownames(stop)), 
+                           y = abs(dfbetas_speed))) +
+  geom_text(mapping = aes(x = top3dfbeta,
+                          y = stop$dfbetas_speed[top3dfbeta],
+                          label = top3dfbeta)) +
+  theme_bw() +
+  ylab("Absolute Value of DFBETAS for Weight") +
+  xlab("Observation Number") +
+  geom_hline(mapping = aes(yintercept = 2 / sqrt(length(stop$dfbetas_speed))),
+             color = "red", linetype = "dashed") +
+  theme(aspect.ratio = 1)
+
+#Resid vs Fitted
+stop.resid_fitted
 ```
 
-< your response here >
+All of the metrics identify observations 55, 60, and 62 as potential influential points, however, based on the graphs of cook's distance and dfbetas, I'd say we only need to worry about observations 60 and 62.
 
 #### 12. (R) Additional predictor variables are not required (no diagnostic tools - just think about the variables you have and if there are other variables you think would help predict the response)
 
