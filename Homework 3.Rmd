@@ -1,0 +1,324 @@
+---
+title: "Homework 3"
+subtitle: <center> <h1>Simple Linear Regression Model Inference</h1> </center>
+author: <center> Joshua Carpenter <center>
+output: html_document
+---
+
+<style type="text/css">
+h1.title {
+  font-size: 40px;
+  text-align: center;
+}
+</style>
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(ggfortify)
+library(car)
+```
+
+## Data and Description
+
+Climate change has left California particularly vulnerable to severe drought conditions. One factor affecting water availability in Southern California is stream runoff from snowfall (FYI: water in Utah is also heavily reliant on snowpack). If runoff could be predicted, engineers, planners, and policy makers could do their jobs more effectively because they would have an estimate as to how much water is entering the area. 
+
+The Runoff Water data set compares the **stream runoff (column 2)** (in acre-feet) of a river near Bishop, California (due east of San Jose) with **snowfall (column 1)** (in inches) at a site in the Sierra Nevada mountains. The data set contains 43 years' worth of measurements. Download the water.txt file from Canvas, and put it in the same folder as this R Markdown file.
+
+#### 0. Replace the text "< PUT YOUR NAME HERE >" (above next to "author:") with your full name.
+
+#### 1. Read in the data set, and call the data frame "water". Print a summary of the data and make sure the data makes sense. 
+
+```{r, message=FALSE}
+water <- read_table2("water.txt")
+summary(water)
+```
+
+#### 2. Create (and print) a scatterplot of the data with variables on the appropriate axes. Make you plot look professional (make sure the axes have appropriate limits to capture the data nicely, make sure the axes labels are descriptive, etc.). You should save your plot as an object to be used throughout the rest of the assignment.
+
+```{r, fig.align='center'}
+(water.plot <- 
+  ggplot(data = water, mapping = aes(x = Precip, y = Runoff)) +
+  geom_point() +
+  xlab("Precipitation"))
+```
+
+#### 3. Calculate (and print) the correlation coefficient. Use that and the scatterplot to briefly describe the relationship between Stream Runoff and Snowfall.
+
+```{r, fig.align='center'}
+cor(water$Precip, water$Runoff)
+```
+
+There is a very strong, positive, linear correlation between amount of precipitation and water runoff.
+
+#### 4. Add the OLS regression line to the scatterplot you created in 2. Print the plot.
+
+```{r, fig.align='center', message=FALSE}
+water.plot +
+  geom_smooth(method = "lm", se = FALSE)
+```
+
+#### 5. Fit a simple linear regression model to the data (no transformations), and save the residuals and fitted values to the `water` dataframe. Print a summary of the linear model.
+
+```{r}
+water.lm <- lm(Runoff ~ Precip, data = water)
+water <- water %>%
+  mutate(Resid = water.lm$residuals, Fit = water.lm$fitted.values)
+summary(water.lm)
+```
+
+### Questions 6 to 11 involve using diagnostics to determine if the linear regression assumptions are met. For each assumption, (1) perform appropriate diagnostics to determine if the assumption is violated, and (2) explain whether or not you think the assumption is violated and why you think that. 
+
+#### 6. (L) $X$ vs $Y$ is linear (use at least two diagnostic tools)
+
+```{r, fig.align='center'}
+# Scatterplot
+water.plot
+
+#Residuals vs Fitted Values
+(water.resid_fit <- autoplot(water.lm, which = 1, ncol = 1) +
+    theme_minimal())
+```
+
+< your response here >
+
+#### 7. (I) The residuals are independent (no diagnostic tools - just think about how the data was collected and briefly write your thoughts)
+
+< your response here >
+
+#### 8. (N) The residuals are normally distributed and centered at zero (use at least three diagnostic tools)
+
+```{r, fig.align='center'}
+# Q-Q
+(water.qq <- autoplot(water.lm, which = 2, ncol = 1))
+
+# Histogram
+ggplot(data = water, mapping = aes(x = Resid)) +
+  geom_histogram(binwidth = 1700, mapping = aes(y = ..density..)) +
+  stat_function(fun = dnorm,
+                color = "blue",
+                args = list(mean = 0,
+                            sd = sd(water$Resid))) +
+  xlab("Residuals") +
+  ylab("Density") +
+  theme_light()
+
+# Boxplot
+ggplot(data = water, mapping = aes(y = Resid)) +
+  geom_boxplot() +
+  stat_summary(mapping = aes(x = 0),
+               fun = mean, geom = "point",
+               shape = 4, size = 2, color = "darkred") +
+  theme_classic() +
+  theme(aspect.ratio = 2,
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank()) +
+  scale_y_continuous(limits = c(-20000, 30000), breaks = seq(-20000, 30000, 10000)) +
+  ylab("Residuals") +
+  xlab("")
+```
+
+< your response here >
+
+#### 9. (E) The residuals have equal (constant) variance across all values of $X$ (homoscedastic) (use two diagnostic tools)
+
+```{r, fig.align='center'}
+# Residuals vs Fitted Values
+water.resid_fit
+
+# Brown-Forsyth Test
+grp <- as.factor(c(rep("lower", floor(dim(water)[1] / 2)), 
+                   rep("upper", ceiling(dim(water)[1] / 2))))
+leveneTest(arrange(water, Precip)$Resid ~ grp, center = median)
+```
+
+< your response here >
+
+#### 10. (A) The model describes all observations (i.e., there are no influential points) (use at least four diagnostic tools)
+
+```{r, fig.align='center'}
+#Q-Q
+water.qq
+
+# Cook's Distance
+water <- water %>% mutate(cooksd = cooks.distance(water.lm))
+top2cd <- as.numeric(names(sort(water$cooksd, decreasing = TRUE)[1:2]))
+
+ggplot() +
+  geom_point(data = water,
+             mapping = aes(x = as.numeric(rownames(water)), 
+                           y = cooksd)) +
+  geom_text(mapping = aes(x = top2cd,
+                          y = water$cooksd[top2cd],
+                          label = top2cd)) +
+  theme_bw() +
+  ylab("Cook's Distance") +
+  xlab("Observation Number") +
+  geom_hline(mapping = aes(yintercept = 4 / length(water$cooksd)),
+             color = "red", linetype = "dashed") +
+  theme(aspect.ratio = 1)
+
+# DFBETAS
+water <- water %>%
+  mutate(dfbetas_precip = dfbetas(water.lm)[, "Precip"])
+names(water$dfbetas_precip) <- 1:nrow(water)
+top3dfbeta <- as.numeric(names(
+  sort(abs(water$dfbetas_precip), decreasing = TRUE)[1:3]
+))
+
+# Plot the DFBETAS against the observation number
+ggplot() + 
+  geom_point(data = water,
+             mapping = aes(x = as.numeric(rownames(water)), 
+                           y = abs(dfbetas_precip))) +
+  geom_text(mapping = aes(x = top3dfbeta,
+                          y = abs(water$dfbetas_precip[top3dfbeta]),
+                          label = top3dfbeta)) +
+  theme_bw() +
+  ylab("Absolute Value of DFBETAS for Runoff") +
+  xlab("Observation Number") +
+  geom_hline(mapping = aes(yintercept = 2 / sqrt(length(water$dfbetas_precip))),
+             color = "red", linetype = "dashed") +
+  theme(aspect.ratio = 1)
+
+#Resid vs Fitted
+water.resid_fit
+```
+
+< your response here >
+
+#### 11. (R) Additional predictor variables are not required (no diagnostic tools - just think about the variables you have and if there are other variables you think would help predict the response)
+
+< your response here >
+
+
+
+### Based on your answers to questions 6 through 11, you may (or may not) have decided a transformation to the data is needed. This was, hopefully, good practice for assessing model assumptions. For simplicity for this assignment, we will use the orignial model (no transformations) for the rest of the questions. While this may be less satisifying, it will save you time.:)
+
+
+
+#### 12. Mathematically write out the fitted simple linear regression model for this data set using the coefficients you found above (do not use betas). Do not use "X" and "Y" in your model - use variable names that are fairly descriptive.
+
+$\widehat{\text{Runoff}}_i=27014.6+3752.5\cdot\text{Precip}_i$
+
+#### 13. Compute, print, *and interpret* a 95% confidence interval for the slope.
+
+```{r}
+confint(water.lm, "Precip")
+```
+
+< your response here >
+
+#### 14. Based on the confidence interval, does an increase in snowfall *significantly* increase stream water? Why or why not?
+
+< your response here >
+
+#### 15. Print a summary of the linear model. Interpret the results from the hypothesis test output for the slope.
+
+```{r}
+summary(water.lm)
+```
+
+< your response here >
+
+#### 16. Briefly describe the difference between (1) a confidence interval for the slope, (2) a confidence interval for the mean of $Y$, and (3) a prediction interval for individual observations.
+
+< your response here >
+
+#### 17. Compute, print, *and interpret* a 95% confidence interval for the average of $Y$ when $x_i=30$.
+
+```{r}
+predict(water.lm, newdata = data.frame(Precip = 30),
+        interval = "confidence", level = 0.95)
+```
+
+< your response here >
+
+#### 18. Create a confidence band for the average of $Y$ across all values of $X$, and overlay this band (using a distinct color) on your previous scatterplot that you created in 4. Print the plot.
+
+```{r}
+values <- tibble(
+  Precip = seq(min(water$Precip), max(water$Precip), length = 100))
+values <- values %>%
+  mutate(Runoff = predict(water.lm,
+                          newdata = values,
+                          interval = "confidence",
+                          level = 0.95))
+water.plot +
+  geom_smooth(method = "lm") +
+  geom_line(data = values,
+            mapping = aes(x = Precip, y = Runoff[,"lwr"])) +
+  geom_line(data = values,
+            mapping = aes(x = Precip, y = Runoff[,"upr"]))
+```
+
+#### 19. Briefly explain why the confidence band is shaped the way that it is.
+
+< your response here >
+
+#### 20. Compute, print, *and interpret* a 95% prediction interval for $Y$ when $x_i=30$.
+
+```{r}
+# <your code here>
+```
+
+< your response here >
+
+#### 21. Create a prediction band for $Y$ across all values of $X$, and overlay this band (using a distinct color) on your previous scatterplot that you created in 4. Print the plot.
+
+```{r}
+# <your code here>
+```
+
+#### 22. Briefly explain how/why the prediction band differs from the confidence band.
+
+< your response here >
+
+#### 23. Calculate the MSE (Mean Square Error) for the linear model you fit using the ANOVA results. Print the result.
+
+```{r}
+# <your code here>
+```
+
+#### 24. Briefly explain (1) what the MSE estimates and (2) a drawback to using it as a model evaluation metric.
+
+< your response here >
+
+#### 25. Calculate the RMSE (Root Mean Square Error) for the linear model you fit. Print and interpret the result.
+
+```{r}
+# <your code here>
+```
+
+#### 26. Calculate the MAE (Mean Absolute Error) for the linear model you fit (do not use a function from a random R package). Print and interpret the result.
+
+```{r}
+# <your code here>
+```
+
+#### 27. Briefly explain a benefit of using the MAE as a model evaluation metric over the RMSE.
+
+< your response here >
+
+#### 28. Print a summary of the linear model. Briefly interpret the R-Squared (Coefficient of Determination) value.
+
+```{r}
+# <your code here>
+```
+
+< your response here >
+
+#### 29. Breifly interpret the Adjusted R-Squared (shown in the summary output above).
+
+< your response here >
+
+#### 30. Look at the F-Statistic and corresponding $p$-value from the summary of the linear model (output shown above). Do these values indicate that $X$ has a statistically significant linear association with $Y$?
+
+< your response here >
+
+#### 31. Briefly summarize what you learned, personally, from this analysis about the statistics, model fitting process, etc.
+
+< your response here >
+
+#### 32. Briefly summarize what you learned from this analysis *to a non-statistician*. Write a few sentences about (1) the purpose of this data set and analysis and (2) what you learned about this data set from your analysis. Write your response as if you were addressing a business manager (avoid using statistics jargon) and just provide the main take-aways.
+
+< your response here >
