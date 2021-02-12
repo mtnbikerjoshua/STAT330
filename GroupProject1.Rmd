@@ -1,0 +1,42 @@
+---
+title: "GroupProject1"
+author: "Us"
+date: "2/12/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(ggfortify)
+library(car)
+```
+
+```{r}
+premier <- read_csv("premier1819.csv") %>%
+  filter(position %in% c("Forward")) %>%
+  select(appearances = appearances_overall, goals = goals_overall)
+summary(premier)
+```
+
+```{r}
+ggplot(data = premier, mapping = aes(x = appearances, y = goals)) +
+  geom_point()
+cor(premier)
+```
+
+```{r}
+premier <- premier %>%
+  mutate(goals = goals + 1)
+bc <- boxCox(no_zeros$goals ~ no_zeros$appearances)  # plot curve
+bc$x[which.max(bc$y)]  # pull out the "best" lambda value
+
+premier_trans <- premier %>%
+  mutate(goals = 1/sqrt(goals))
+ggplot(data = premier_trans, mapping = aes(x = appearances, y = goals)) +
+  geom_point()
+cor(premier)
+
+premier_lm <- lm(goals ~ appearances, data = premier)
+```
+
+
