@@ -19,7 +19,7 @@ summary(premier)
 ```
 
 ```{r}
-ggplot(data = premier, mapping = aes(x = appearances, y = goals)) +
+premier_plot <- ggplot(data = premier, mapping = aes(x = appearances, y = goals)) +
   geom_point()
 cor(premier)
 ```
@@ -27,16 +27,116 @@ cor(premier)
 ```{r}
 premier <- premier %>%
   mutate(goals = goals + 1)
-bc <- boxCox(no_zeros$goals ~ no_zeros$appearances)  # plot curve
+bc <- boxCox(premier$goals ~ premier$appearances)  # plot curve
 bc$x[which.max(bc$y)]  # pull out the "best" lambda value
 
 premier_trans <- premier %>%
   mutate(goals = 1/sqrt(goals))
-ggplot(data = premier_trans, mapping = aes(x = appearances, y = goals)) +
-  geom_point()
+(premier_trans_plot <- ggplot(data = premier_trans, mapping = aes(x = appearances, y = goals)) +
+  geom_point())
 cor(premier)
 
-premier_lm <- lm(goals ~ appearances, data = premier)
+premier_lm <- lm(goals ~ appearances, data = premier_trans)
+premier$residuals <- premier_lm$residuals
+```
+# Check the model assumption
+
+## L) Linear
+```{r}
+# Scatterplot
+premier_trans_plot
+
+# Resids vs fitted
+premier_residfit <- autoplot(premier_lm, which = 1, ncol = 1) + theme_classic()
+```
+
+## I) Independent
+The residuals are independent: Considering there can only be so many forwards on a given team, it would be very difficult to obtain the data for two forwards at the same time. The only case where two forwards would be in the same place at the same time is when they were on opposing teams, so they would have little to no effect on each other.
+
+## N) Normal
+```{r}
+# Q-Q Plot
+(premier_QQ <- autoplot(premier_lm, which = 2, ncol = 1, nrow = 1))
+
+# Histogram
+premier_hist <- ggplot(data = premier, mapping = aes(x = residuals)) + 
+  # when using this code for future data sets, make sure to change the binwidth: 
+  geom_histogram(mapping = aes(y = ..density..), binwidth = 0.012) +
+  # stat_function() overlays the red normal curve on the histogram
+  stat_function(fun = dnorm, 
+                color = "red", 
+                size = 2,
+                args = list(mean = mean(premier$residuals), 
+                            sd = sd(premier$residuals)))
+
+premier_hist
+
+# Box-plot
+ggplot(data = premier, mapping = aes(y = residuals)) + geom_boxplot()
 ```
 
 
+## E) Equal
+```{r}
+# Residuals vs Fitted Values
+premier_residfit
+
+# Brown-Forsythe Test
+grp <- as.factor(c(rep("lower", floor(dim(premier)[1] / 2)), 
+                   rep("upper", ceiling(dim(premier)[1] / 2))))
+leveneTest(arrange(premier, appearances)$residuals ~ grp, center = median)
+```
+
+## A) All
+```{r}
+#Q-Q
+premier_QQ
+
+# Cook's Distance
+premier_trans <- premier_trans %>%
+  mutate(cooksd = cooks.distance(premier_lm))
+top4cd <- as.numeric(names(sort(premier_trans$cooksd, decreasing = TRUE)[1:4]))
+
+ggplot() +
+  geom_point(data = premier_trans,
+             mapping = aes(x = as.numeric(rownames(premier_trans)), 
+                           y = cooksd)) +
+  geom_text(mapping = aes(x = top4cd,
+                          y = premier_trans$cooksd[top4cd],
+                          label = top4cd)) +
+  theme_bw() +
+  ylab("Cook's Distance") +
+  xlab("Observation Number") +
+  geom_hline(mapping = aes(yintercept = 4 / length(premier_trans$cooksd)),
+             color = "red", linetype = "dashed") +
+  theme(aspect.ratio = 1)
+
+# DFBETAS
+premier_trans <- premier_trans %>%
+  mutate(dfbetas_appearances = dfbetas(premier_lm)[, "appearances"])
+names(premier_trans$dfbetas_appearances) <- 1:nrow(premier_trans)
+top3dfbeta <- as.numeric(names(
+  sort(abs(premier_trans$dfbetas_appearances), decreasing = TRUE)[1:3]
+))
+
+# Plot the DFBETAS against the observation number
+ggplot() + 
+  geom_point(data = premier_trans,
+             mapping = aes(x = as.numeric(rownames(premier_trans)), 
+                           y = abs(dfbetas_appearances))) +
+  geom_text(mapping = aes(x = top3dfbeta,
+                          y = abs(premier_trans$dfbetas_appearances[top3dfbeta]),
+                          label = top3dfbeta)) +
+  theme_bw() +
+  ylab("Absolute Value of DFBETAS for Runoff") +
+  xlab("Observation Number") +
+  geom_hline(mapping = aes(yintercept = 2 / sqrt(length(premier_trans$dfbetas_appearances))),
+             color = "red", linetype = "dashed") +
+  theme(aspect.ratio = 1)
+
+#Resid vs Fitted
+premier_residfit
+```
+
+## R) Required
+There aren’t many other additional predictor variables that are likely to help in predicting the response variable of goals scored. The only thing that may affect the number of goals scored per forward would be the weather in a given match, but it varies pretty randomly and would have an equal effect on all forwards, so there isn’t much extra variability that isn’t accounted for.
