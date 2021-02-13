@@ -1,6 +1,6 @@
 ---
 title: "GroupProject1"
-author: "Us"
+authors: "Joshua Carpenter, Mark Guymon, Carter Erickson, Kevin Sanchez"
 date: "2/12/2021"
 output: html_document
 ---
@@ -11,72 +11,136 @@ library(ggfortify)
 library(car)
 ```
 
-```{r}
-premier <- read_csv("premier1819.csv") %>%
+# Background and Introduction
+Sports have always been of interest to people around the world, and one of the things that is spoken of most often in sports is who is the best. The sport of soccer in particular attributes greatness to those who do one thing very well: score goals. There are many factors that make it easier and harder for a player to score goals, and thus determine how great of a player they are.
+
+One such factor in determining goals scored in one's career is how many matches the same person has played in. While some players may play hundreds, if not thousands of games, players who play in fewer matches can still score more goals. By understanding this relationship, both teams and fans alike will be able to have an understanding of who the better player is in a given scenario, and what they can expect out of this player if he is on their team. 
+
+We are interested in better understanding this relationship between the number of goals scored in a forward's career and how many matches he has appeared in. Given recent trends in soccer history, we hypothesize that matches played will have a significant affect on goals scored, specifically that the more matches played in, the more goals a player will have scored. 
+
+To test our assumption, we obtained data on 163 players across various teams in the Premier League. We will begin our analysis by applying basic summary statistics and exploratory data techniques to better understand the data. Then, we apply simple linear regression with goals scored as the response, regressed on the number of matches played. 
+
+We conclude our analysis by using what we learned to infer to the broader soccer player population. We recommend picking players that produce more goals per match than others, given what we found in our analysis. We also suggest waiting until a player has played at least 3 or 4 years before making any definitive decisions on his skill level. 
+
+# Methods and Results
+
+In an effort to understand the impact of number of games played on number of goals scored, we obtained a data set that contains information for 572 soccer players across various teams and leagues. The data comes from an online database at https://footystats.org/download-stats-csv, and we downloaded the data set (a .csv file) on February 12, 2021. 
+
+The following table displays the variable names in this data set, along with their descriptions.
+
+Variable    | Description
+----------  | -------------
+appearances | Number of matches a player has appeared in
+goals       | Number of goals scored by the player
+
+We start by applying basic summary and exploratory statistics to this data to better understand the data and identify trends.
+
+```{r, message=FALSE}
+# Read in the data set, include only data for forwards
+(premier <- read_csv("premier1819.csv") %>%
   filter(position %in% c("Forward")) %>%
-  select(appearances = appearances_overall, goals = goals_overall)
+  select(appearances = appearances_overall, goals = goals_overall))
 summary(premier)
 ```
 
 ```{r}
-premier_plot <- ggplot(data = premier, mapping = aes(x = appearances, y = goals)) +
-  geom_point()
-cor(premier)
+(premier_plot <- ggplot(data = premier, mapping = aes(x = appearances, y = goals)) +
+  geom_point() +
+  theme_bw() +
+  xlim(0, 40) +
+  xlab("Appearances") +
+  ylab("Goals"))
+paste(
+  "Correlation coefficient:",
+  round(cor(premier$appearances, premier$goals), 5)
+)
 ```
+From our exploratory data analyses, we notice several interesting features. First, matches appeared in is slightly positively correlated with number of goals scored. This is what we expected. After analyzing the histograms of the variables, we notice goals scored is slightly right skewed. Knowing this can lead to problems for some of the assumptions, we may need to transform goals scored in the future.
+
+From our EDA, we noticed and were concerned about some of the very low values for goals scored for some players. Because there were several players who hadn't scored a goal in a match they appeared in, we decided to transform the dataset to make it workable. We excluded all players except forwards and we used the box-cox approach to transform the data. We looked into the other values and determined the were correct. Since they are correct, we may want to fit a model with and without these observations to determine the amount of influence these observations have on the model. The box-cox method told us that a reciprocal square root would be the best transform and that is what we decided to go with even though the assumptions are not perfectly met.
 
 ```{r}
+# Shift the data up one to remove zeros
 premier <- premier %>%
   mutate(goals = goals + 1)
+
+# Use the box cox approach to find the best transformation
 bc <- boxCox(premier$goals ~ premier$appearances)  # plot curve
 bc$x[which.max(bc$y)]  # pull out the "best" lambda value
 
+# Transform the data
 premier_trans <- premier %>%
   mutate(goals = 1/sqrt(goals))
-(premier_trans_plot <- ggplot(data = premier_trans, mapping = aes(x = appearances, y = goals)) +
-  geom_point())
-cor(premier)
 
-premier_lm <- lm(goals ~ appearances, data = premier_trans)
-premier$residuals <- premier_lm$residuals
+# Plot the transformed data and check to correlation coefficient
+(premier_trans_plot <-
+  ggplot(data = premier_trans, mapping = aes(x = appearances, y = goals)) +
+  geom_point() +
+  theme_bw() +
+  xlim(0, 40) +
+  xlab("Appearances") +
+  ylab("Transformed Goals"))
+paste(
+  "Correlation coefficient:",
+  round(cor(premier_trans$appearances, premier_trans$goals), 5)
+)
 ```
-# Check the model assumption
 
-## L) Linear
+
+After transforming the data, we will check the assumptions of linear regression to see if we can move forward with the analysis.
+
+## Check Assuptions
+
+### L) Linear
 ```{r}
 # Scatterplot
 premier_trans_plot
 
 # Resids vs fitted
-premier_residfit <- autoplot(premier_lm, which = 1, ncol = 1) + theme_classic()
+(premier_residfit <- autoplot(premier_lm, which = 1, ncol = 1) +
+    theme_classic())
 ```
+The data is not perfectly linear, but better than before the transformation. We could wish for better, but the data is linear enough. This assumption is met.
 
-## I) Independent
-The residuals are independent: Considering there can only be so many forwards on a given team, it would be very difficult to obtain the data for two forwards at the same time. The only case where two forwards would be in the same place at the same time is when they were on opposing teams, so they would have little to no effect on each other.
+### I) Independent
+The residuals are independent: Considering there can only be so many forwards on a given team, it would be very improbable to obtain the data for two forwards at the same time. The only case where two forwards would be in the same place at the same time is when they were on opposing teams, so they would have little to no effect on each other.
 
-## N) Normal
+### N) Normal
 ```{r}
 # Q-Q Plot
-(premier_QQ <- autoplot(premier_lm, which = 2, ncol = 1, nrow = 1))
+(premier_QQ <- autoplot(premier_lm, which = 2, ncol = 1, nrow = 1) +
+   theme_bw() +
+   coord_fixed())
 
 # Histogram
 premier_hist <- ggplot(data = premier, mapping = aes(x = residuals)) + 
-  # when using this code for future data sets, make sure to change the binwidth: 
   geom_histogram(mapping = aes(y = ..density..), binwidth = 0.012) +
-  # stat_function() overlays the red normal curve on the histogram
   stat_function(fun = dnorm, 
-                color = "red", 
-                size = 2,
+                color = "red",
                 args = list(mean = mean(premier$residuals), 
-                            sd = sd(premier$residuals)))
-
+                            sd = sd(premier$residuals))) +
+  theme_minimal() +
+  xlab("Residuals") +
+  ylab("Density")
 premier_hist
 
 # Box-plot
-ggplot(data = premier, mapping = aes(y = residuals)) + geom_boxplot()
+ggplot(data = premier, mapping = aes(y = residuals)) +
+  geom_boxplot() +
+  stat_summary(mapping = aes(x = 0),
+               fun = mean, geom = "point",
+               shape = 4, size = 2, color = "darkred") +
+  theme_classic() +
+  theme(aspect.ratio = 2,
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank()) +
+  scale_y_continuous(limits = c(-0.2, 0.2), breaks = seq(-0.2, 0.2, 0.1)) +
+  ylab("Residuals") +
+  xlab("")
 ```
+The residuals are roughly normally distributed. The histogram leaves something to be desired, but the boxplot and Q-Q plot look all right. This assumption is met.
 
-
-## E) Equal
+### E) Equal
 ```{r}
 # Residuals vs Fitted Values
 premier_residfit
@@ -86,8 +150,9 @@ grp <- as.factor(c(rep("lower", floor(dim(premier)[1] / 2)),
                    rep("upper", ceiling(dim(premier)[1] / 2))))
 leveneTest(arrange(premier, appearances)$residuals ~ grp, center = median)
 ```
+This assumption is not met, as clearly indicated by both the residuals vs. fitted values plot and the Brown-Forsyth test, however we are going to continue with the analysis for practice sake. This transformation was the best we could get.
 
-## A) All
+### A) All
 ```{r}
 #Q-Q
 premier_QQ
@@ -137,6 +202,29 @@ ggplot() +
 #Resid vs Fitted
 premier_residfit
 ```
+This assumption is met. Though the plots indicate a few possible influential points, they are grouped closely with the rest of the data and they are not repeated accross plots. There are none to worry about.
 
-## R) Required
+### R) Required
 There aren’t many other additional predictor variables that are likely to help in predicting the response variable of goals scored. The only thing that may affect the number of goals scored per forward would be the weather in a given match, but it varies pretty randomly and would have an equal effect on all forwards, so there isn’t much extra variability that isn’t accounted for.
+
+## Regression
+
+We now want to fit a multiple linear regression model to the data set with MPG as the response and Weight as the predictor. Here is the general linear model we want to fit:
+
+$\text{Goals Scored}_i = \beta_0 + \beta_1\text{Matches Played}_i + \epsilon_i \space \text{where} \space \epsilon_i \sim N(0, \sigma^2)$
+
+We now fit an initial model.
+
+```{r, message=FALSE}
+# Fit a linear model to the transformed data and save the residuals
+premier_lm <- lm(goals ~ appearances, data = premier_trans)
+premier_trans$residuals <- premier_lm$residuals
+
+# Plot the regression line on the transformed data
+premier_trans_plot +
+  geom_smooth(method = "lm", se = FALSE)
+```
+
+# Summary and Conclusions
+
+Understanding how many times a player appears in a match affects the number of goals he scores is very important in determining the talent level of a given player, which assists team managers in deciding whether or not to use a team's alloted cap space to sign a player to a lucrative deal. We conducted an analysis to determine how games played impacts goals scored, assuming we would find a significant positive relationship between the two. After fitting a simple linear regression model, we found that matches played, does, indeed, have a significant positive impact on goals scored. We can likely not trust these resulsts, however, since the model didn't fit the data very well. That is not to say that there is no relationship whatsoever, it just might not be as strong or weak as the model suggests.
