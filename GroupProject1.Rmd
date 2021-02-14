@@ -295,7 +295,35 @@ premier_plot +
   geom_line(data = preds, mapping = aes(x = appearances_values, y = upr),
             color = "red", size = 1)
 ```
+```{r}
+#MSE
+anova <- aov(premier_lm)  # get ANOVA components
+premier_anova <- summary(anova)[[1]]  # save data in a usable form
+premier_anova
 
+premier_mse <- premier_anova["Residuals", "Sum Sq"] / premier_anova["Residuals", "Df"]
+premier_mse
+
+```
+The MSE in this case is very hard to interpret.
+```{r}
+#RMSE
+premier_rmse <- sqrt(premier_mse)
+premier_rmse
+
+```
+An RMSE of 0.16 on the scale of the transformed data is fairly large, indicating that the model does not fit the data very well.
+```{r}
+#MAE
+sum(abs(premier_trans$residuals)) / premier_lm$df.residual
+
+```
+See interpretation of RMSE.
+
+```{r}
+summary(premier_lm)
+```
+The R-Squared tells us that our model explains about 70% of the variance in the data. This is not too bad, so the model fits the data alright.
 
 # Summary and Conclusions
 
