@@ -1,6 +1,6 @@
 ---
 title: "GroupProject1"
-authors: "Joshua Carpenter, Mark Guymon, Carter Erickson, Kevin Sanchez"
+author: "Joshua Carpenter, Mark Guymon, Carter Erickson, Kevin Sanchez"
 date: "2/12/2021"
 output: html_document
 ---
@@ -161,7 +161,7 @@ premier_residfit
 # Brown-Forsythe Test
 grp <- as.factor(c(rep("lower", floor(dim(premier)[1] / 2)), 
                    rep("upper", ceiling(dim(premier)[1] / 2))))
-leveneTest(arrange(premier, appearances)$residuals ~ grp, center = median)
+leveneTest(arrange(premier_trans, appearances)$residuals ~ grp, center = median)
 ```
 This assumption is not met, as clearly indicated by both the residuals vs. fitted values plot and the Brown-Forsyth test, however we are going to continue with the analysis for practice sake. This transformation was the best we could get.
 
@@ -220,95 +220,84 @@ This assumption is met. Though the plots indicate a few possible influential poi
 ### R) Required
 There aren’t many other additional predictor variables that are likely to help in predicting the response variable of goals scored. The only thing that may affect the number of goals scored per forward would be the weather in a given match, but it varies pretty randomly and would have an equal effect on all forwards, so there isn’t much extra variability that isn’t accounted for.
 
-## Anylyze the results
-```{r}
-#MSE
-anova <- aov(premier_lm)  # get ANOVA components
-premier_anova <- summary(anova)[[1]]  # save data in a usable form
-premier_anova
+## Analyze the results
+Now that we have a model that describes the data well with all assumptions met (except constant variance), we would like to use the model to make inferences and predictions. Here is our fitted linear model:
+  
+  $\widehat{\text{MPG}}_i = ...$
+  
+To start, we will assess the model slopes, confidence intervals of the slopes, and hypothesis tests. Note that our hypothesis tests are not valid since the constant variance assumption was not met, but we will interpret them anyway for practice.
 
-premier_mse <- premier_anova["Residuals", "Sum Sq"] / premier_anova["Residuals", "Df"]
-premier_mse
-
-```
-
-```{r}
-#RMSE
-premier_rmse <- sqrt(premier_mse)
-premier_rmse
-
-```
-
-```{r}
-#MAE
-sum(abs(premier$residuals)) / premier_lm$df.residual
-
-```
-
-```{r}
-#R2 AR2 hypothesis slope test
+```{r, fig.align='center'}
 summary(premier_lm)
-```
-
-r2 = .6983
-ar2 = .6956
-hypothesis slope test: It is significant because the slope isn't 0, and the
-p-value is less than .05, so we reject the null hypothesis that the slope is
-insignificant.
-
-```{r}
-# 95% confidence interval for the slope
 confint(premier_lm, level = 0.95, parm = "appearances")
-
 ```
 
-```{r}
-#confidence band
-appearances_values <- seq(min(premier$appearances), max(premier$appearances),
+As number of matches played increases, we are 95% confident that the average number of goals scored
+per player is between 0.0223 and 0.0174. This range suggests that there is a significant relationsihp
+between the number of matches played and goals scored. A p-value of < 2.2e-16 indicates the same thing
+because it is such a small value we feel comfortable rejecting the null hypothesis of a relationship
+existing. 
+
+We now want to get predictions for new players. We are particularly interested in the predicted average number of goals scored
+for a player that plays in 45 games (an estimate of the average amount of games a soccer player plays in
+a year). We will use this information to create confidence and prediction intervals for average goals scored.  
+```{r, fig.align='center'}
+predict(premier_lm, 
+        newdata = data.frame(appearances = 45),
+        interval = "confidence",
+        level = 0.95)
+predict(premier_lm, 
+        newdata = data.frame(appearances = 45),
+        interval = "prediction",
+        level = 0.95)
+```
+
+We are 95% confident that the average number of goals per appearances scored by a player in a year is between
+0.053 and 0.193. 
+
+We also plotted the confidence and prediction intervals across all values of games played. 
+```{r, fig.align='center'}
+appearances_values <- seq(min(premier$appearances), max(premier$appearances), 
                           length = 100)
 
-conf_int_mean <- predict(premier_lm,
-                        newdata = data.frame(appearances = appearances_values),
-                        interval = "confidence",
-                        level = 0.95)
+conf_int_mean <- predict(premier_lm, 
+                         newdata = data.frame(appearances = appearances_values),
+                         interval = "confidence",
+                         level = 0.95)
 
 preds <- data.frame("appearances_values" = appearances_values, conf_int_mean)
 
 premier_trans_plot +
   geom_line(data = preds, mapping = aes(x = appearances_values, y = fit),
             color = "blue", size = 1.5)+
-
+  
   geom_line(data = preds, mapping = aes(x = appearances_values, y = lwr),
             color = "red", size = 1.5)+
-
+  
   geom_line(data = preds, mapping = aes(x = appearances_values, y = upr),
             color = "red", size = 1.5)
 
-```
-
-```{r}
-#prediction band
-appearances_values <- seq(min(premier$appearances), max(premier$appearances),
+appearances_values <- seq(min(premier$appearances), max(premier$appearances), 
                           length = 100)
 
-conf_int_mean <- predict(premier_lm,
-                        newdata = data.frame(appearances = appearances_values),
-                        interval = "prediction",
-                        level = 0.95)
+conf_int_mean <- predict(premier_lm, 
+                         newdata = data.frame(appearances = appearances_values),
+                         interval = "prediction",
+                         level = 0.95)
 
 preds <- data.frame("appearances_values" = appearances_values, conf_int_mean)
 
 premier_trans_plot +
   geom_line(data = preds, mapping = aes(x = appearances_values, y = fit),
             color = "blue", size = 1.5)+
-
+  
   geom_line(data = preds, mapping = aes(x = appearances_values, y = lwr),
             color = "red", size = 1.5)+
-
+  
   geom_line(data = preds, mapping = aes(x = appearances_values, y = upr),
             color = "red", size = 1.5)
-
 ```
+
 
 # Summary and Conclusions
 
