@@ -86,8 +86,21 @@ paste(
 )
 ```
 
+We now want to fit a multiple linear regression model to the data set with MPG as the response and Weight as the predictor. Here is the general linear model we want to fit:
 
-After transforming the data, we will check the assumptions of linear regression to see if we can move forward with the analysis.
+$\text{Goals Scored}_i = \beta_0 + \beta_1\text{Matches Played}_i + \epsilon_i \space \text{where} \space \epsilon_i \sim N(0, \sigma^2)$
+
+We now fit an initial model.
+
+```{r, message=FALSE}
+# Fit a linear model to the transformed data and save the residuals
+premier_lm <- lm(goals ~ appearances, data = premier_trans)
+premier_trans$residuals <- premier_lm$residuals
+
+# Plot the regression line on the transformed data
+premier_trans_plot +
+  geom_smooth(method = "lm", se = FALSE)
+```
 
 ## Check Assuptions
 
@@ -113,19 +126,19 @@ The residuals are independent: Considering there can only be so many forwards on
    coord_fixed())
 
 # Histogram
-premier_hist <- ggplot(data = premier, mapping = aes(x = residuals)) + 
-  geom_histogram(mapping = aes(y = ..density..), binwidth = 0.012) +
+premier_hist <- ggplot(data = premier_trans, mapping = aes(x = residuals)) + 
+  geom_histogram(mapping = aes(y = ..density..), binwidth = 0.04) +
   stat_function(fun = dnorm, 
                 color = "red",
-                args = list(mean = mean(premier$residuals), 
-                            sd = sd(premier$residuals))) +
+                args = list(mean = mean(premier_trans$residuals), 
+                            sd = sd(premier_trans$residuals))) +
   theme_minimal() +
   xlab("Residuals") +
   ylab("Density")
 premier_hist
 
 # Box-plot
-ggplot(data = premier, mapping = aes(y = residuals)) +
+ggplot(data = premier_trans, mapping = aes(y = residuals)) +
   geom_boxplot() +
   stat_summary(mapping = aes(x = 0),
                fun = mean, geom = "point",
@@ -134,11 +147,11 @@ ggplot(data = premier, mapping = aes(y = residuals)) +
   theme(aspect.ratio = 2,
         axis.text.x = element_blank(),
         axis.ticks.x = element_blank()) +
-  scale_y_continuous(limits = c(-0.2, 0.2), breaks = seq(-0.2, 0.2, 0.1)) +
+  scale_y_continuous(limits = c(-0.5, 0.5), breaks = seq(-0.4, 0.4, 0.2)) +
   ylab("Residuals") +
   xlab("")
 ```
-The residuals are roughly normally distributed. The histogram leaves something to be desired, but the boxplot and Q-Q plot look all right. This assumption is met.
+The residuals are roughly normally distributed. There is some slight right-skewness, but not too worrisome. This assumption is met.
 
 ### E) Equal
 ```{r}
@@ -207,22 +220,94 @@ This assumption is met. Though the plots indicate a few possible influential poi
 ### R) Required
 There aren’t many other additional predictor variables that are likely to help in predicting the response variable of goals scored. The only thing that may affect the number of goals scored per forward would be the weather in a given match, but it varies pretty randomly and would have an equal effect on all forwards, so there isn’t much extra variability that isn’t accounted for.
 
-## Regression
+## Anylyze the results
+```{r}
+#MSE
+anova <- aov(premier_lm)  # get ANOVA components
+premier_anova <- summary(anova)[[1]]  # save data in a usable form
+premier_anova
 
-We now want to fit a multiple linear regression model to the data set with MPG as the response and Weight as the predictor. Here is the general linear model we want to fit:
+premier_mse <- premier_anova["Residuals", "Sum Sq"] / premier_anova["Residuals", "Df"]
+premier_mse
 
-$\text{Goals Scored}_i = \beta_0 + \beta_1\text{Matches Played}_i + \epsilon_i \space \text{where} \space \epsilon_i \sim N(0, \sigma^2)$
+```
 
-We now fit an initial model.
+```{r}
+#RMSE
+premier_rmse <- sqrt(premier_mse)
+premier_rmse
 
-```{r, message=FALSE}
-# Fit a linear model to the transformed data and save the residuals
-premier_lm <- lm(goals ~ appearances, data = premier_trans)
-premier_trans$residuals <- premier_lm$residuals
+```
 
-# Plot the regression line on the transformed data
+```{r}
+#MAE
+sum(abs(premier$residuals)) / premier_lm$df.residual
+
+```
+
+```{r}
+#R2 AR2 hypothesis slope test
+summary(premier_lm)
+```
+
+r2 = .6983
+ar2 = .6956
+hypothesis slope test: It is significant because the slope isn't 0, and the
+p-value is less than .05, so we reject the null hypothesis that the slope is
+insignificant.
+
+```{r}
+# 95% confidence interval for the slope
+confint(premier_lm, level = 0.95, parm = "appearances")
+
+```
+
+```{r}
+#confidence band
+appearances_values <- seq(min(premier$appearances), max(premier$appearances),
+                          length = 100)
+
+conf_int_mean <- predict(premier_lm,
+                        newdata = data.frame(appearances = appearances_values),
+                        interval = "confidence",
+                        level = 0.95)
+
+preds <- data.frame("appearances_values" = appearances_values, conf_int_mean)
+
 premier_trans_plot +
-  geom_smooth(method = "lm", se = FALSE)
+  geom_line(data = preds, mapping = aes(x = appearances_values, y = fit),
+            color = "blue", size = 1.5)+
+
+  geom_line(data = preds, mapping = aes(x = appearances_values, y = lwr),
+            color = "red", size = 1.5)+
+
+  geom_line(data = preds, mapping = aes(x = appearances_values, y = upr),
+            color = "red", size = 1.5)
+
+```
+
+```{r}
+#prediction band
+appearances_values <- seq(min(premier$appearances), max(premier$appearances),
+                          length = 100)
+
+conf_int_mean <- predict(premier_lm,
+                        newdata = data.frame(appearances = appearances_values),
+                        interval = "prediction",
+                        level = 0.95)
+
+preds <- data.frame("appearances_values" = appearances_values, conf_int_mean)
+
+premier_trans_plot +
+  geom_line(data = preds, mapping = aes(x = appearances_values, y = fit),
+            color = "blue", size = 1.5)+
+
+  geom_line(data = preds, mapping = aes(x = appearances_values, y = lwr),
+            color = "red", size = 1.5)+
+
+  geom_line(data = preds, mapping = aes(x = appearances_values, y = upr),
+            color = "red", size = 1.5)
+
 ```
 
 # Summary and Conclusions
