@@ -41,8 +41,8 @@ summary(water)
   geom_point() +
   xlab("Precipitation") +
   xlim(0, 35) +
-  scale_y_continuous(limits = c(30000, 150000),
-                     breaks = seq(30000, 150000, 30000)) +
+  scale_y_continuous(limits = c(20000, 180000),
+                     breaks = seq(30000, 180000, 30000)) +
   theme_minimal())
 ```
 
@@ -87,7 +87,7 @@ This assumption is met. The scatterplot looks very linear and the blue line in t
 
 #### 7. (I) The residuals are independent (no diagnostic tools - just think about how the data was collected and briefly write your thoughts)
 
-< your response here >
+There is definitely some dependency year to year. This assumption is not met.
 
 #### 8. (N) The residuals are normally distributed and centered at zero (use at least three diagnostic tools)
 
@@ -121,7 +121,7 @@ ggplot(data = water, mapping = aes(y = Resid)) +
   xlab("")
 ```
 
-< your response here >
+The residuals certainly could be better and I might look at some transformations, but they look normal enough. This assumption is met.
 
 #### 9. (E) The residuals have equal (constant) variance across all values of $X$ (homoscedastic) (use two diagnostic tools)
 
@@ -135,7 +135,7 @@ grp <- as.factor(c(rep("lower", floor(dim(water)[1] / 2)),
 leveneTest(arrange(water, Precip)$Resid ~ grp, center = median)
 ```
 
-< your response here >
+This assumption is met. There is perhaps a slight cone shape, but not too much and the Brown-Forsythe p-value is high.
 
 #### 10. (A) The model describes all observations (i.e., there are no influential points) (use at least four diagnostic tools)
 
@@ -188,11 +188,11 @@ ggplot() +
 water.resid_fit
 ```
 
-< your response here >
+This assumption is not met, we would want to at least look at points 35 and 36 that show up in all the plots. Maybe 37 too.
 
 #### 11. (R) Additional predictor variables are not required (no diagnostic tools - just think about the variables you have and if there are other variables you think would help predict the response)
 
-< your response here >
+This assumption is met. While it is possible that there are other predictors of runoff than snowfall, they must have a small impact in comparison.
 
 
 
@@ -210,11 +210,11 @@ $\widehat{\text{Runoff}}_i=27014.6+3752.5\cdot\text{Precip}_i$
 confint(water.lm, "Precip")
 ```
 
-< your response here >
+If snowfall increases by 1 inch, we are 95% confident that the increase in runoff will be between 3317 and 4188 acre-feet.
 
 #### 14. Based on the confidence interval, does an increase in snowfall *significantly* increase stream water? Why or why not?
 
-< your response here >
+Yes, because the null hypothesis of $\beta_1=0$ is not in the interval.
 
 #### 15. Print a summary of the linear model. Interpret the results from the hypothesis test output for the slope.
 
@@ -222,11 +222,11 @@ confint(water.lm, "Precip")
 summary(water.lm)
 ```
 
-< your response here >
+The p-value of $2.2\times10^{-16}$ is very small, so we conclude that there is a linear correlation between precipitation and runoff.
 
 #### 16. Briefly describe the difference between (1) a confidence interval for the slope, (2) a confidence interval for the mean of $Y$, and (3) a prediction interval for individual observations.
 
-< your response here >
+A confidence interval for the slope tells you where we think the true slope will lie. The CI for the mean of y tells us where we think the true mean of y for a specific value of x is. The prediction interval tells us where we think a new observation will lie based on it's x value.
 
 #### 17. Compute, print, *and interpret* a 95% confidence interval for the average of $Y$ when $x_i=30$.
 
@@ -235,11 +235,11 @@ predict(water.lm, newdata = data.frame(Precip = 30),
         interval = "confidence", level = 0.95)
 ```
 
-< your response here >
+We are 95% confident that the average runoff for all years with 30 inches of precipitation is between 131902.2 and 147276.1 acre-feet.
 
 #### 18. Create a confidence band for the average of $Y$ across all values of $X$, and overlay this band (using a distinct color) on your previous scatterplot that you created in 4. Print the plot.
 
-```{r}
+```{r, message=FALSE}
 values <- tibble(
   Precip = seq(min(water$Precip), max(water$Precip), length = 100))
 values <- values %>%
@@ -262,7 +262,7 @@ values <- values %>%
 
 #### 19. Briefly explain why the confidence band is shaped the way that it is.
 
-< your response here >
+The calculation of the confidence interval depends on how far from the mean of x you are. As you get farther from the mean of x you get more uncertain.
 
 #### 20. Compute, print, *and interpret* a 95% prediction interval for $Y$ when $x_i=30$.
 
@@ -271,7 +271,7 @@ predict(water.lm, newdata = data.frame(Precip = 30),
         interval = "prediction", level = 0.95)
 ```
 
-< your response here >
+We are 95% confident if we measured the precipitation one year to be 30 inches that the runoff would be between 119998.8 and 159179.5 acre-feet.
 
 #### 21. Create a prediction band for $Y$ across all values of $X$, and overlay this band (using a distinct color) on your previous scatterplot that you created in 4. Print the plot.
 
@@ -295,7 +295,7 @@ water.CIplot +
 
 #### 22. Briefly explain how/why the prediction band differs from the confidence band.
 
-< your response here >
+The confidence band shows where the mean runoff might fall (a fixed parameter). The prediction band shows where a data point might fall (a random variable).
 
 #### 23. Calculate the MSE (Mean Square Error) for the linear model you fit using the ANOVA results. Print the result.
 
@@ -305,7 +305,7 @@ water.CIplot +
 
 #### 24. Briefly explain (1) what the MSE estimates and (2) a drawback to using it as a model evaluation metric.
 
-< your response here >
+The MSE estimates the mean variance of the model. The main drawback is that it is very un-interpretable.
 
 #### 25. Calculate the RMSE (Root Mean Square Error) for the linear model you fit. Print and interpret the result.
 
@@ -321,7 +321,7 @@ sum(abs(water$Resid)) / water.lm$df.residual
 
 #### 27. Briefly explain a benefit of using the MAE as a model evaluation metric over the RMSE.
 
-< your response here >
+The MAE is much less sensitive to outliers since the residuals are not being squared.
 
 #### 28. Print a summary of the linear model. Briefly interpret the R-Squared (Coefficient of Determination) value.
 
@@ -329,20 +329,20 @@ sum(abs(water$Resid)) / water.lm$df.residual
 summary(water.lm)
 ```
 
-< your response here >
+Our R-Squared tells us that the model explains ~88% of the variance in the data leaving 22% unexplained. This tells us that the model fits quite well.
 
 #### 29. Breifly interpret the Adjusted R-Squared (shown in the summary output above).
 
-< your response here >
+Our R-Squared tells us that the model explains ~88% of the variance in the data leaving 22% unexplained. This tells us that the model fits quite well.
 
 #### 30. Look at the F-Statistic and corresponding $p$-value from the summary of the linear model (output shown above). Do these values indicate that $X$ has a statistically significant linear association with $Y$?
 
-< your response here >
+Yes, the f-statistic is very large and the p-value is very, very small indicating that there is a strong linear association between x and y.
 
 #### 31. Briefly summarize what you learned, personally, from this analysis about the statistics, model fitting process, etc.
 
-< your response here >
+My main takeaway from this assignment was a solid understanding of the prediction and confidence intervals.
 
 #### 32. Briefly summarize what you learned from this analysis *to a non-statistician*. Write a few sentences about (1) the purpose of this data set and analysis and (2) what you learned about this data set from your analysis. Write your response as if you were addressing a business manager (avoid using statistics jargon) and just provide the main take-aways.
 
-< your response here >
+The purpose of this analysis was to evaluate whether there is a correlation between the precipitation in the Sierra-Nevadas and the water runoff in Bishop, CA. We determined that is is a very strong correlation between the two, that as precipitation increases so does runoff, and that if we know the precipitation for any given year we can predict the runoff with an accuracy of about plus or minus 17,000 acre-feet.

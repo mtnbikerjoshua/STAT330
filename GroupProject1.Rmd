@@ -1,5 +1,5 @@
 ---
-title: "GroupProject1"
+title: "Group Project 1"
 author: "Joshua Carpenter, Mark Guymon, Carter Erickson, Kevin Sanchez"
 date: "2/12/2021"
 output: html_document
