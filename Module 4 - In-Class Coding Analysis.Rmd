@@ -57,7 +57,8 @@ head(super)
 Hint: you can use the `plot` function or the `pairs` function.
 
 ```{r, fig.align='center'}
-# your code here
+plot(super, pch = 19)
+pairs(super)
 ```
 
 ### Create a Correlation Matrix. Do the correlations here match your insights obtained from the scatterplot matrix?
@@ -66,7 +67,8 @@ Hint: use the `cor` function. You may want to use the `round` function to displa
 Hint: for a color- and shape-coded correlation matrix, use the `corrplot` package and function (use the `cor` function as input).
 
 ```{r}
-# your code here
+cor(super)
+corrplot(cor(super), type = "upper")
 ```
 
 
@@ -78,7 +80,9 @@ Make sure to save the residuals to your `super` data frame.
 Hint: for the X variables in the `lm` function, you can type all the variables out separated by a plus sign "+", or you can simply type "~.". The "." tells R that you want to include every column in your data set, except the column you specified as the response, as an independent variable in your model. You have to be careful with the "~." notation. Once you save the residuals and/or fitted values to the data frame (or anything else), you cannot rerun your linear model, otherwise those to variables will be added to the model. Your output should match the output in the class notes.
 
 ```{r}
-# your code here
+super_lm <- lm(Rating ~ ., data = super)
+summary(super_lm)
+super$residuals <- super_lm$residuals
 ```
 
 
@@ -93,12 +97,24 @@ Check your scatterplot matrix from above, in addition to the residuals vs. fitte
 
 **(b) Residuals vs. Fitted Values Plot**
 ```{r, fig.align='center'}
-# your code here
+
 ```
 
 **(c) Residuals vs. Predictor Plots (6 plots in total)**
 ```{r, fig.align='center'}
-# your code here
+resid_vs_pred <- function(model) {
+  data <- model.frame(model)
+  predictors <- attr(model$terms, "term.labels")
+  residuals <- resid(super_lm)
+  plots <- list()
+  for (i in predictors) {
+    plots[i] <- ggplot(data = data, mapping = aes(x = data[i], y = model$residuals)) +
+      geom_point()
+    plots[i]
+  }
+  #grid.arrange(plots)
+}
+resid_vs_pred(super_lm)
 ```
 
 **(d) Partial Regression Plots (also called "Added Variable" plots)**
@@ -106,7 +122,7 @@ Check your scatterplot matrix from above, in addition to the residuals vs. fitte
 Hint: use the `avPlots` function with your fitted model as the argument to the function. 
 
 ```{r, fig.align='center'}
-# your code here
+avPlots(super_lm)
 ```
 
 ### 2. The residuals are independent across all values of y
@@ -199,7 +215,7 @@ Check the scatterplot matrix and correlation matrix from above, in addition to t
 Hint: use the `vif` function with your fitted model as the argument to the function, and use the criteria we discussed in class to check for multicollinearity.
 
 ```{r}
-# your code here
+vif(super_lm)
 ```
 
 
@@ -208,7 +224,7 @@ Hint: use the `vif` function with your fitted model as the argument to the funct
 ### Use the `confint` R function to create a 95% confidence interval for each coefficient. Does the interval for Complaints match the interval in the course notes?
 
 ```{r}
-# your code here
+confint(super_lm)
 ```
 
 ### Using the `predict` function, calculate a 95% confidence interval for the average supervisor rating ($Y$) when Complaints = 60, Privileges = 50, Learn = 56, Raises = 63, Critical = 76, and Advance = 40. Does this match the interval in the course notes?
@@ -228,7 +244,8 @@ Hint: use the `vif` function with your fitted model as the argument to the funct
 ### Use the `anova` R function to test some coefficients, Learn and Raises, simultaneously. The function will take two arguments: (1) the original model and (2) a model excluding Learn and Raises. Can we safely drop Learn and Raises from the model?
 
 ```{r}
-# your code here
+super_lm_reduced <- lm(Rating ~ . - Learn, data = super)
+anova(super_lm, super_lm_reduced)
 ```
 
 Since the p-value is relatively large, there is no significant difference in these models, so we can go with the simpler model, meaning we can drop Learn and Raises.
