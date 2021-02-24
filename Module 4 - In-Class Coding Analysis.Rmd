@@ -108,11 +108,17 @@ resid_vs_pred <- function(model) {
   residuals <- resid(super_lm)
   plots <- list()
   for (i in predictors) {
-    plots[i] <- ggplot(data = data, mapping = aes(x = data[i], y = model$residuals)) +
-      geom_point()
-    plots[i]
+    plots[[i]] <- ggplot(data = data,
+                         mapping = aes(x = pull(data, i),
+                                       y = model$residuals)) +
+      geom_point() +
+      theme_minimal() +
+      theme(aspect.ratio = 1) +
+      xlab(i) +
+      ylab("Residuals")
+    plots[[i]]
   }
-  #grid.arrange(plots)
+  do.call(grid.arrange, plots)
 }
 resid_vs_pred(super_lm)
 ```
