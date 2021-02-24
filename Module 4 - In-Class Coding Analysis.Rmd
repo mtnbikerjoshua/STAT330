@@ -1,0 +1,238 @@
+---
+title: "Module 4 - Multiple Linear Regression"
+subtitle: <center> <h1>In-Class Analysis</h1> </center>
+output: html_document
+---
+
+<style type="text/css">
+h1.title {
+  font-size: 40px;
+  text-align: center;
+}
+</style>
+
+```{r setup, include=FALSE}
+# load packages here
+library(tidyverse)
+library(ggfortify)  # plot lm objects using ggplot instead of base R
+library(car)  # needed for added-variable plots and dfbetas and dffits
+library(corrplot)  # colored correlation matrix
+library(gridExtra)  # NEW PACKAGE for putting multiple ggplots in one plot
+```
+
+## Data and Description
+
+*Note: you will be duplicating a lot of code from Module 2 - it will save you time if you open up your Module 2 code and copy/paste as needed. Alternatively, you can skip the sections that have you copy/paste code from Module 2 to save time. Also, we won't worry about the axis limits for this coding day to save time.*
+
+**This is the same data set used in the Module 4 Course Notes. You can check your code output against the output from the course notes to verify you are getting the correct results.**
+
+Companies are continually evaluating supervisors to not only determine adequate performance, but also gauge employee morale (an important indicator for employee productivity). In an effort to understand the important aspects of a good supervisor, 30 employees at a certain company were asked to provide an overall rating and scores on 6 characteristics of their immediate managers. Employees were asked to rate the following statements on a scale from 0 to 100 (0 meaning ”completely disagree” to 100 meaning ”completely agree”):
+
+Variable   | Description
+---------- | -------------
+Rating     | Overall rating of supervisor performance. Higher score means better supervisor.
+Complaints | Score for "Your supervisor handles employee complaints appropriately."
+Privileges | Score for "Your supervisor allows special privileges."
+Learn      | Score for "Your supervisor provides opportunities to learn new things."
+Raises     | Score for "Your supervisor bases raises on performance."
+Critical   | Score for "Your supervisor is too critical of poor performance."
+Advance    | Score for "I am *not* satisfied with the rate I am advancing in the company.”
+
+Do the following:
+
+1. Download the "Supervisor.txt" file from Canvas and put it in the same folder as this R Markdown file.
+2. Read in the data set, call it "super", and take a look at the top few rows.
+
+```{r}
+super <- read.csv("Supervisor.txt", header = TRUE, sep = " ")
+head(super)
+```
+
+
+
+## Explore the Data
+
+### Create a Scatterplot Matrix. Do you observe any variables that appear strongly linearly correlated?
+
+Hint: you can use the `plot` function or the `pairs` function.
+
+```{r, fig.align='center'}
+# your code here
+```
+
+### Create a Correlation Matrix. Do the correlations here match your insights obtained from the scatterplot matrix?
+
+Hint: use the `cor` function. You may want to use the `round` function to display only 2 decimal places for easier viewing.
+Hint: for a color- and shape-coded correlation matrix, use the `corrplot` package and function (use the `cor` function as input).
+
+```{r}
+# your code here
+```
+
+
+
+## Fit a Multiple Linear Regression Model
+
+Make sure to save the residuals to your `super` data frame.
+
+Hint: for the X variables in the `lm` function, you can type all the variables out separated by a plus sign "+", or you can simply type "~.". The "." tells R that you want to include every column in your data set, except the column you specified as the response, as an independent variable in your model. You have to be careful with the "~." notation. Once you save the residuals and/or fitted values to the data frame (or anything else), you cannot rerun your linear model, otherwise those to variables will be added to the model. Your output should match the output in the class notes.
+
+```{r}
+# your code here
+```
+
+
+
+## Check Multiple Linear Regression Model Assumptions
+
+### 1. The X's vs Y are linear
+
+Check your scatterplot matrix from above, in addition to the residuals vs. fitted values plot, the residuals vs predictor plots, and the partial regression plots (below).
+
+**(a) Scatterplot Matrix (already created - see above)**
+
+**(b) Residuals vs. Fitted Values Plot**
+```{r, fig.align='center'}
+# your code here
+```
+
+**(c) Residuals vs. Predictor Plots (6 plots in total)**
+```{r, fig.align='center'}
+# your code here
+```
+
+**(d) Partial Regression Plots (also called "Added Variable" plots)**
+
+Hint: use the `avPlots` function with your fitted model as the argument to the function. 
+
+```{r, fig.align='center'}
+# your code here
+```
+
+### 2. The residuals are independent across all values of y
+
+No code to test this assumption - you just have to think about it.
+
+### 3. The residuals are normally distributed and centered at zero
+
+**(a) Boxplot**
+```{r, fig.align='center'}
+# your code here
+```
+
+**(b) Histogram**
+```{r, fig.align='center'}
+# your code here
+```
+
+**(c) Normal Probability Plot**
+```{r, fig.align='center'}
+# your code here
+```
+
+**(d) Shapiro-Wilk Test**
+```{r}
+# your code here
+```
+
+### 4. The residuals have constant variance across all values of the X's
+
+Check the residuals vs. fitted values plot from above.
+
+### 5. The model describes all observations (i.e., there are no influential points)
+
+Check the scatterplot matrix, boxplot, histogram, normal probability plot, and the partial regression plots from above, in addition to Cook's Distance, DFBETAS, and DFFITS (below).
+
+**(a) Scatterplot Matrix (already created - see above)**
+
+**(b) Boxplot (already created - see above)**
+
+**(c) Histogram (already created - see above)**
+
+**(d) Normal Probability Plot (already created - see above)**
+
+**(e) Partial Regression Plots (already created - see above)**
+
+**(f) Cook's Distance**
+```{r, fig.align='center'}
+# your code here
+```
+
+**(g) DFBETAS (6 plots total)**
+
+Note: you may wish to plot both cut-off lines since the sample size is right on the boundary of the rough cut-off value of $n = 30$. 
+
+```{r, fig.align='center'}
+# your code here
+```
+
+**(h) DFFITS**
+
+```{r, fig.align='center'}
+# your code here
+```
+
+### 6. All important predictors are included 
+
+No code to test this assumption - you just have to think about it.
+
+### 7. No Multicollinearity
+
+Check the scatterplot matrix and correlation matrix from above, in addition to the variance inflation factors (below).
+
+**(a) Scatterplot Matrix (already created - see above)**
+```{r, fig.align='center'}
+# can copy/paste the code here for convenience (you will have to subset the 
+# data set to only include the columns in the original data set since you have
+# added the residuals, DFFITS, DFBETAS, etc.)
+```
+
+**(b) Correlation Matrix (already created - see above)**
+```{r, fig.align='center'}
+# can copy/paste the code here for convenience (you will have to subset the 
+# data set to only include the columns in the original data set since you have
+# added the residuals, DFFITS, DFBETAS, etc.)
+```
+
+**(c) Variance Inflation Factors (VIF)**
+
+Hint: use the `vif` function with your fitted model as the argument to the function, and use the criteria we discussed in class to check for multicollinearity.
+
+```{r}
+# your code here
+```
+
+
+## Use the Model for Inference
+
+### Use the `confint` R function to create a 95% confidence interval for each coefficient. Does the interval for Complaints match the interval in the course notes?
+
+```{r}
+# your code here
+```
+
+### Using the `predict` function, calculate a 95% confidence interval for the average supervisor rating ($Y$) when Complaints = 60, Privileges = 50, Learn = 56, Raises = 63, Critical = 76, and Advance = 40. Does this match the interval in the course notes?
+```{r}
+# your code here
+```
+
+### Using the `predict` function, calculate a 95% prediction interval for the average supervisor rating ($Y$) when Complaints = 60, Privileges = 50, Learn = 56, Raises = 63, Critical = 76, and Advance = 40. Does this match the interval in the course notes?
+```{r}
+# your code here
+```
+
+
+
+## Could we have simplified the model (more on this to come)?
+
+### Use the `anova` R function to test some coefficients, Learn and Raises, simultaneously. The function will take two arguments: (1) the original model and (2) a model excluding Learn and Raises. Can we safely drop Learn and Raises from the model?
+
+```{r}
+# your code here
+```
+
+Since the p-value is relatively large, there is no significant difference in these models, so we can go with the simpler model, meaning we can drop Learn and Raises.
+
+## Summary and Conclusions
+
+Overall, the assumptions all seem to be *roughly* met. We will discuss next steps for this analysis in the upcoming module, but you could certainly try transformations to the data, as we discussed in Module 2. Again, we should *always* start a data analysis with exploratory data analysis (EDA), then we should check to make sure our model assumptions are met, and then we can proceed with statistical inference.

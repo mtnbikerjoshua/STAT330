@@ -1,0 +1,185 @@
+---
+title: "Homework 4"
+subtitle: <center> <h1>Multiple Linear Regression</h1> </center>
+author: <center> < PUT YOUR NAME HERE > <center>
+output: html_document
+---
+
+<style type="text/css">
+h1.title {
+  font-size: 40px;
+  text-align: center;
+}
+</style>
+
+```{r setup, include=FALSE}
+# load packages here
+```
+
+*Note that you do not need to properly format the axis limits in your plots for this assignment (to save time). You should, however, still make the plots square in shape.*
+
+## Data and Description
+
+Measuring body fat is not simple. One method requires submerging the body underwater in a tank and measuring the increase in water level. A simpler method for estimating body fat would be preferred. In order to develop such a method, researchers recorded age (years), weight (pounds), height (inches), and three body circumference measurements (around the neck, chest, and abdominal (all in centimeters)) for 252 men. Each man’s percentage of body fat was accurately estimated by an underwater weighing technique (the variable brozek is the percentage of body fat). The hope is to be able to use this data to create a model that will accurately predict body fat percentage, by using just the basic variables recorded, without having to use the tank submerging method. 
+
+The data can be found in the BodyFat data set on Canvas. Download "BodyFat.txt", and put it in the same folder as this R Markdown file.
+
+#### 0. Replace the text "< PUT YOUR NAME HERE >" (above next to "author:") with your full name.
+
+#### 1. Read in the data set, and call the data frame "bodyfat". Print a summary of the data and make sure the data makes sense. 
+
+```{r}
+# your code here
+```
+
+#### 2. Create and print a scatterplot matrix of the data.
+
+```{r, fig.align='center'}
+# your code here
+```
+
+#### 3. Based on the scatterplot matrix, briefly explain which variables you think will be "significant" for predicting brozek and which variables you think will *not* be helpful at predicting brozek. Explain how the scatterplot helped determine your answers.
+
+< your response here >
+
+#### 4. Create and print a correlation matrix (numeric or color- and shape-coded).
+
+```{r}
+# your code here
+```
+
+#### 5. Based on the scatterplot matrix and the correlation matrix, are their any pairs of variables that you suspect will cause a problem for the multicollinearity assumption? If so, which ones?
+
+< your response here > 
+
+#### 6. Fit a multiple linear regression model to the data (no transformations). Print a summary of the results. Save the residuals to the `bodyfat` data frame.
+
+```{r}
+# your code here
+```
+
+#### 7. Briefly comment on the "significance" of the variables: were you surprised by the results? Are there any variables that are significant that you think shouldn't be? Are there any variables that are not significant that you think should be?
+
+< your response here >
+
+#### 8. Briefly comment on the sign (+/-) of the coefficients for the variables. Are their any variables where the sign is the opposite of what you expected?
+
+< your response here >
+
+#### 9. Mathematically write out the *fitted* multiple linear regression model for this data set using the coefficients you found above (do not use betas). Do not use "X" and "Y" in your model - use variable names that are fairly descriptive.
+
+< your response here >
+
+#### 10. *Assuming* the model assumptions are all met, how would you interpret the coefficient for Weight?
+
+< your response here >
+
+#### 11. Briefly explain what it means to "hold all else constant," when you interpret the coefficient for Weight?
+
+< your response here >
+
+#### 12. Briefly explain what the F-test indicates, as reported in the model output from question 6.
+
+< your response here >
+
+#### 13. Briefly interpret the *adjusted* R-squared, as reported in the model output from question 6.
+
+< your response here >
+
+### Questions 14-20 involve using diagnostics to determine if the linear regression assumptions are met. For each assumption, (1) perform appropriate diagnostics to determine if the assumption is violated, and (2) explain whether or not you think the assumption is violated and why you think that.
+
+#### 14. (L) The X's vs Y are linear (use the residual vs. predictor plots, partial regression plots, and one other diagnostic tool of your choice). 
+
+```{r, fig.align='center'}
+# residual vs. predictor plots
+# your code here
+```
+
+```{r, fig.align='center'}
+# partial regression plots
+# your code here
+```
+
+```{r, fig.align='center'}
+# one other plot of your choice
+# your code here
+```
+
+< your response here >
+
+#### 15. (I) The residuals are independent (no diagnostic tools - just think about how the data was collected and briefly write your thoughts)
+
+< your response here >
+
+#### 16. (N) The residuals are normally distributed and centered at zero (use all four diagnostic tools)
+
+```{r, fig.align='center'}
+# Diagnostic 1
+# your code here
+```
+
+```{r, fig.align='center'}
+# Diagnostic 2
+# your code here
+```
+
+```{r, fig.align='center'}
+# Diagnostic 3
+# your code here
+```
+
+```{r, fig.align='center'}
+# Diagnostic 4
+# your code here
+```
+
+< your response here >
+
+#### 17. (E) The residuals have equal/constant variance across all values of X (only one diagnostic tool)
+
+```{r, fig.align='center'}
+# your code here
+```
+
+< your response here >
+
+#### 18. (A) The model describes all observations (i.e., there are no influential points) (use Cook's distance, DFBETAS, and DFFITS. Also, in your response, refer to the evidence from the plots you created in previous questions)
+
+```{r, fig.align='center'}
+# Cook's Distance
+# your code here
+```
+
+```{r, fig.align='center'}
+# DFBETAS
+# your code here
+```
+
+```{r, fig.align='center'}
+# DFFITS
+# your code here
+```
+
+< your response here >
+
+#### 19. (R) Additional predictor variables are not required (no diagnostic tools - just think about the variables you have and if there are other variables you think would help predict the response)
+
+< your response here >
+
+#### 20. No multicollinearity (for this assumption, compute the variance inflation factors (VIFs) and compare the VIFs to your comments in questions 5. Do the variance inflation factors match your assumptions from questions 5? Is this assumption met?
+
+```{r, fig.align='center'}
+# your code here
+```
+
+< your response here >
+
+### Note: your next homework assigment will use this same data set, and you will be asked to fix the assumptions that were broken.
+
+#### 21. Briefly summarize what you learned, personally, from this analysis about the statistics, model fitting process, etc.
+
+< your response here >
+
+#### 22. Briefly summarize what you learned from this analysis *to a non-statistician*. Write a few sentences about (1) the purpose of this data set and analysis and (2) what you learned about this data set from your analysis. Write your response as if you were addressing a business manager (avoid using statistics jargon) and just provide the main take-aways.
+
+< your response here >
