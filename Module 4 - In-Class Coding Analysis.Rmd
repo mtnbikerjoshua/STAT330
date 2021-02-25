@@ -44,8 +44,10 @@ Do the following:
 2. Read in the data set, call it "super", and take a look at the top few rows.
 
 ```{r}
-super <- read.csv("Supervisor.txt", header = TRUE, sep = " ")
-head(super)
+#super <- read.csv("Supervisor.txt", header = TRUE, sep = " ")
+#head(super)
+
+(super <- read_table2("Supervisor.txt"))
 ```
 
 
@@ -56,9 +58,12 @@ head(super)
 
 Hint: you can use the `plot` function or the `pairs` function.
 
-```{r, fig.align='center'}
-plot(super, pch = 19)
-pairs(super)
+```{r, fig.align='center', fig.height=8, fig.width=8}
+point_matrix <- function(data) {
+  par(pty = "s", las = 1)
+  pairs(data, pch = 19, lower.panel = NULL)
+}
+point_matrix(super)
 ```
 
 ### Create a Correlation Matrix. Do the correlations here match your insights obtained from the scatterplot matrix?
@@ -66,9 +71,13 @@ pairs(super)
 Hint: use the `cor` function. You may want to use the `round` function to display only 2 decimal places for easier viewing.
 Hint: for a color- and shape-coded correlation matrix, use the `corrplot` package and function (use the `cor` function as input).
 
-```{r}
-cor(super)
-corrplot(cor(super), type = "upper")
+```{r, fig.height=5}
+show_cor <- function(data) {
+  par(mfrow = c(1, 2))
+  corrplot(cor(data), method = "number", type = "upper", diag = F, tl.col = "#1f3366", cl.pos = "n")
+  corrplot(cor(data), type = "upper", diag = F, tl.col = "#1f3366", cl.pos = "n")
+}
+show_cor(super)
 ```
 
 
@@ -82,7 +91,6 @@ Hint: for the X variables in the `lm` function, you can type all the variables o
 ```{r}
 super_lm <- lm(Rating ~ ., data = super)
 summary(super_lm)
-super$residuals <- super_lm$residuals
 ```
 
 
@@ -97,7 +105,12 @@ Check your scatterplot matrix from above, in addition to the residuals vs. fitte
 
 **(b) Residuals vs. Fitted Values Plot**
 ```{r, fig.align='center'}
-
+resid_vs_fitted <- function(model) {
+  autoplot(model, which = 1, ncol = 1) +
+    theme_minimal() +
+    theme(aspect.ratio = 1)
+}
+resid_vs_fitted(super_lm)
 ```
 
 **(c) Residuals vs. Predictor Plots (6 plots in total)**
@@ -118,6 +131,7 @@ resid_vs_pred <- function(model) {
       ylab("Residuals")
     plots[[i]]
   }
+  plots["ncol"] <- ceiling(sqrt(length(plots)))
   do.call(grid.arrange, plots)
 }
 resid_vs_pred(super_lm)
@@ -127,8 +141,15 @@ resid_vs_pred(super_lm)
 
 Hint: use the `avPlots` function with your fitted model as the argument to the function. 
 
-```{r, fig.align='center'}
-avPlots(super_lm)
+```{r, fig.align='center', fig.height = 8}
+added_variable_plots <- function(model) {
+  predictors <- attr(model$terms, "term.labels")
+  rows <- floor(sqrt(length(predictors)))
+  cols <- length(predictors) / rows
+  par(pty = "s", cex.lab = 2, cex.axis = 1.5)
+  avPlots(model, layout = c(rows, cols), pch = 19)
+}
+added_variable_plots(super_lm)
 ```
 
 ### 2. The residuals are independent across all values of y
