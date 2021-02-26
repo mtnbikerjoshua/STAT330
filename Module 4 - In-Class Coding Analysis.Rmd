@@ -118,7 +118,7 @@ resid_vs_fitted(super_lm)
 resid_vs_pred <- function(model) {
   data <- model.frame(model)
   predictors <- attr(model$terms, "term.labels")
-  residuals <- resid(super_lm)
+  residuals <- resid(model)
   plots <- list()
   for (i in predictors) {
     plots[[i]] <- ggplot(data = data,
@@ -206,7 +206,28 @@ Check the scatterplot matrix, boxplot, histogram, normal probability plot, and t
 Note: you may wish to plot both cut-off lines since the sample size is right on the boundary of the rough cut-off value of $n = 30$. 
 
 ```{r, fig.align='center'}
-# your code here
+# calculate the DFBETAS for Complaints
+super$dfbetas_complaints <- as.vector(dfbetas(super_lm)[, "Complaints"])
+
+# plot the DFBETAS against the observation number
+# I haven't changed everything over from the module 2 code
+dfbetas_plot_complaints <- ggplot(data = super) + 
+  geom_point(mapping = aes(x = as.numeric(rownames(super)), 
+                           y = abs(dfbetas_complaints))) +
+  theme_bw() +
+  ylab("Absolute Value of DFBETAS for Weight") +
+  xlab("Observation Number") +
+  # for n > 30
+  geom_hline(mapping = aes(yintercept = 2 / sqrt(length(dfbetas_complaints))),
+             color = "red", linetype = "dashed") + 
+  # for n <= 30 (code for future, small data sets)
+  geom_hline(mapping = aes(yintercept = 1),
+             color = "red", linetype = "dashed") +
+  # scale_x_continuous(limits = c(0, 300)) +
+  # scale_y_continuous(limits = c(0, 0.25)) +
+  theme(aspect.ratio = 1)
+
+dfbetas_plot_complaints
 ```
 
 **(h) DFFITS**
