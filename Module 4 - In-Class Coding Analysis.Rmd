@@ -43,7 +43,7 @@ Do the following:
 1. Download the "Supervisor.txt" file from Canvas and put it in the same folder as this R Markdown file.
 2. Read in the data set, call it "super", and take a look at the top few rows.
 
-```{r}
+```{r, message=FALSE}
 #super <- read.csv("Supervisor.txt", header = TRUE, sep = " ")
 #head(super)
 
@@ -73,7 +73,7 @@ Hint: for a color- and shape-coded correlation matrix, use the `corrplot` packag
 
 ```{r, fig.height=5}
 show_cor <- function(data) {
-  par(mfrow = c(1, 2))
+  par(mfrow = c(1, 2), title = "Correlation")
   corrplot(cor(data), method = "number", type = "upper", diag = F, tl.col = "#1f3366", cl.pos = "n")
   corrplot(cor(data), type = "upper", diag = F, tl.col = "#1f3366", cl.pos = "n")
 }
@@ -104,7 +104,7 @@ Check your scatterplot matrix from above, in addition to the residuals vs. fitte
 **(a) Scatterplot Matrix (already created - see above)**
 
 **(b) Residuals vs. Fitted Values Plot**
-```{r, fig.align='center'}
+```{r, fig.align='center', warning=FALSE}
 resid_vs_fitted <- function(model) {
   autoplot(model, which = 1, ncol = 1) +
     theme_minimal() +
@@ -141,7 +141,7 @@ resid_vs_pred(super_lm)
 
 Hint: use the `avPlots` function with your fitted model as the argument to the function. 
 
-```{r, fig.align='center', fig.height = 8}
+```{r, fig.align='center', fig.height = 7}
 added_variable_plots <- function(model) {
   predictors <- attr(model$terms, "term.labels")
   rows <- floor(sqrt(length(predictors)))
@@ -160,12 +160,40 @@ No code to test this assumption - you just have to think about it.
 
 **(a) Boxplot**
 ```{r, fig.align='center'}
-# your code here
+make_boxplot <- function(model) {
+  residuals <- data.frame(residuals = resid(super_lm))
+  ggplot(data = residuals, mapping = aes(y = residuals)) +
+  geom_boxplot() +
+  stat_summary(mapping = aes(x = 0),
+               fun = mean, geom = "point",
+               shape = 4, size = 2, color = "darkred") +
+  theme_classic() +
+  theme(aspect.ratio = 2,
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank()) +
+#  scale_y_continuous(limits = c(-20000, 30000), breaks = seq(-20000, 30000, 10000)) +
+  ylab("Residuals") +
+  xlab("")
+}
+make_boxplot(super_lm)
 ```
 
 **(b) Histogram**
 ```{r, fig.align='center'}
-# your code here
+make_hist <- function(model) {
+  residuals <- data.frame(residuals = resid(super_lm))
+  ggplot(data = residuals, mapping = aes(x = residuals)) +
+  geom_histogram(binwidth = sd(residuals$residuals / 4), mapping = aes(y = ..density..)) +
+  stat_function(fun = dnorm,
+                color = "blue",
+                args = list(mean = 0,
+                            sd = sd(residuals$residuals)),
+                size = 1.2) +
+  xlab("Residuals") +
+  ylab("Density") +
+  theme_light()
+}
+make_hist(super_lm)
 ```
 
 **(c) Normal Probability Plot**
