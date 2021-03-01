@@ -234,70 +234,54 @@ Check the scatterplot matrix, boxplot, histogram, normal probability plot, and t
 Note: you may wish to plot both cut-off lines since the sample size is right on the boundary of the rough cut-off value of $n = 30$. 
 
 ```{r, fig.align='center'}
-<<<<<<< HEAD
-plot_dfbetas <- function(model) {
+
+plot_dfbetas <- function(model, nLabels = 3) {
   predictors <- attr(model$terms, "term.labels")
   df_betas <- as_tibble(dfbetas(model)[, predictors])
   
-  for (i in 1:ncol(df_betas)) {
-    dfbetas[i] %>%
-      desc() %>%
-      .[1:3]
+  plots <- list()
+  for (i in predictors) {
+    # Find which observations have the highest dfbetas
+    top_vals <- df_betas[i] %>%
+      arrange(desc(abs(eval(parse(text = i))))) %>%
+      .[1:nLabels,] %>%
+      pull(i)
+    top_ind <- which(pull(df_betas, i) %in% top_vals)
+    
+    # Plot the dfbetas against observation number and label the highest ones
+    plots[[i]] <- ggplot() +
+      geom_point(data = df_betas,
+                 mapping = aes(x = as.numeric(rownames(df_betas)),
+                               y = abs(pull(df_betas, i)))) +
+      geom_text(mapping = aes(x = top_ind,
+                              y = abs(top_vals),
+                              label = top_ind)) +
+      theme_bw() +
+      theme(aspect.ratio = 1) +
+      ylab("Abs of DFBETAS") +
+      xlab("Observation Number") +
+      ggtitle(i)
+    
+    if(length(dfbetas) <= 30) {
+      plots[[i]] <- plots[[i]] +
+        geom_hline(mapping = aes(yintercept = 1),
+                   color = "red", linetype = "dashed")
+    }else {
+      plots[[i]] <- plots[[i]] +
+        geom_hline(mapping = aes(yintercept = 2 / sqrt(length(dfbetas))),
+                   color = "red", linetype = "dashed")
+    }
   }
-  
-  
-  water <- water %>%
-  mutate(dfbetas_precip = dfbetas(water.lm)[, "Precip"])
-names(water$dfbetas_precip) <- 1:nrow(water)
-top3dfbeta <- as.numeric(names(
-  sort(abs(water$dfbetas_precip), decreasing = TRUE)[1:3]
-))
-
-# Plot the DFBETAS against the observation number
-ggplot() + 
-  geom_point(data = water,
-             mapping = aes(x = as.numeric(rownames(water)), 
-                           y = abs(dfbetas_precip))) +
-  geom_text(mapping = aes(x = top3dfbeta,
-                          y = abs(water$dfbetas_precip[top3dfbeta]),
-                          label = top3dfbeta)) +
-  theme_bw() +
-  ylab("Absolute Value of DFBETAS for Runoff") +
-  xlab("Observation Number") +
-  geom_hline(mapping = aes(yintercept = 2 / sqrt(length(water$dfbetas_precip))),
-             color = "red", linetype = "dashed") +
-  theme(aspect.ratio = 1)
+  plots["ncol"] <- ceiling(sqrt(length(plots)))
+  do.call(grid.arrange, plots)
 }
-=======
-# calculate the DFBETAS for Complaints
-super$dfbetas_complaints <- as.vector(dfbetas(super_lm)[, "Complaints"])
-
-# plot the DFBETAS against the observation number
-# I haven't changed everything over from the module 2 code
-dfbetas_plot_complaints <- ggplot(data = super) + 
-  geom_point(mapping = aes(x = as.numeric(rownames(super)), 
-                           y = abs(dfbetas_complaints))) +
-  theme_bw() +
-  ylab("Absolute Value of DFBETAS for Weight") +
-  xlab("Observation Number") +
-  # for n > 30
-  geom_hline(mapping = aes(yintercept = 2 / sqrt(length(dfbetas_complaints))),
-             color = "red", linetype = "dashed") + 
-  # for n <= 30 (code for future, small data sets)
-  geom_hline(mapping = aes(yintercept = 1),
-             color = "red", linetype = "dashed") +
-  # scale_x_continuous(limits = c(0, 300)) +
-  # scale_y_continuous(limits = c(0, 0.25)) +
-  theme(aspect.ratio = 1)
-
-dfbetas_plot_complaints
->>>>>>> 9913db6176d18a06bcfba6b969faf3fe31e2f455
+plot_dfbetas(super_lm)
 ```
 
 **(h) DFFITS**
 
 ```{r, fig.align='center'}
-# your code here
+
 ```
 
 ### 6. All important predictors are included 
