@@ -18,6 +18,7 @@ library(ggfortify)  # plot lm objects using ggplot instead of base R
 library(car)  # needed for added-variable plots and dfbetas and dffits
 library(corrplot)  # colored correlation matrix
 library(gridExtra)  # NEW PACKAGE for putting multiple ggplots in one plot
+library(grid) # To go along with gridExtra
 ```
 
 *Note that you do not need to properly format the axis limits in your plots for this assignment (to save time). You should, however, still make the plots square in shape.*
@@ -107,7 +108,7 @@ A p-value of $2.2\times10^{-16}$ indicates that at least one of the variables in
 
 #### 14. (L) The X's vs Y are linear (use the residual vs. predictor plots, partial regression plots, and one other diagnostic tool of your choice). 
 
-```{r, fig.align='center'}
+```{r, fig.align='center', fig.height=5, message=FALSE}
 # residual vs. predictor plots
 resid_vs_pred <- function(model) {
   data <- model.frame(model)
@@ -119,6 +120,7 @@ resid_vs_pred <- function(model) {
                          mapping = aes(x = pull(data, i),
                                        y = model$residuals)) +
       geom_point() +
+      geom_smooth(span = 0.8, n= 10, size = 0.5, se = FALSE) +
       theme_minimal() +
       theme(aspect.ratio = 1) +
       xlab(i) +
@@ -126,12 +128,13 @@ resid_vs_pred <- function(model) {
     plots[[i]]
   }
   plots["ncol"] <- ceiling(sqrt(length(plots)))
+  #plots["top"] <- textGrob("Residuals vs Predictores", gp=gpar(fontsize=30))
   do.call(grid.arrange, plots)
 }
 resid_vs_pred(bodyfat_lm)
 ```
 
-```{r, fig.align='center'}
+```{r, fig.align='center', fig.height=5}
 # partial regression plots
 added_variable_plots <- function(model) {
   predictors <- attr(model$terms, "term.labels")
