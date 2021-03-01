@@ -13,7 +13,11 @@ h1.title {
 </style>
 
 ```{r setup, include=FALSE}
-# load packages here
+library(tidyverse)
+library(ggfortify)  # plot lm objects using ggplot instead of base R
+library(car)  # needed for added-variable plots and dfbetas and dffits
+library(corrplot)  # colored correlation matrix
+library(gridExtra)  # NEW PACKAGE for putting multiple ggplots in one plot
 ```
 
 *Note that you do not need to properly format the axis limits in your plots for this assignment (to save time). You should, however, still make the plots square in shape.*
@@ -29,62 +33,75 @@ The data can be found in the BodyFat data set on Canvas. Download "BodyFat.txt",
 #### 1. Read in the data set, and call the data frame "bodyfat". Print a summary of the data and make sure the data makes sense. 
 
 ```{r}
-# your code here
+bodyfat <- read.csv("bodyfat.txt", sep = " ", row.names = 1)
+bodyfat <- tibble(bodyfat)
+summary(bodyfat)
 ```
 
 #### 2. Create and print a scatterplot matrix of the data.
 
-```{r, fig.align='center'}
-# your code here
+```{r, fig.align='center', fig.height=8, fig.width=8}
+point_matrix <- function(data) {
+  par(pty = "s", las = 1)
+  pairs(data, pch = 19, lower.panel = NULL)
+}
+point_matrix(bodyfat)
 ```
 
 #### 3. Based on the scatterplot matrix, briefly explain which variables you think will be "significant" for predicting brozek and which variables you think will *not* be helpful at predicting brozek. Explain how the scatterplot helped determine your answers.
 
-< your response here >
+I think that weight, neck chest and abdomen will be useful in predicting brozek because they seem to have moderate to strong linear relationships. The last two do not seem to have any correlation.
 
 #### 4. Create and print a correlation matrix (numeric or color- and shape-coded).
 
-```{r}
-# your code here
+```{r, fig.height=3}
+show_cor <- function(data) {
+  par(mfrow = c(1, 2))
+  corrplot(cor(data), method = "number", type = "upper", diag = F, tl.col = "#1f3366", cl.pos = "n")
+  corrplot(cor(data), type = "upper", diag = F, tl.col = "#1f3366", cl.pos = "n")
+}
+show_cor(bodyfat)
 ```
 
 #### 5. Based on the scatterplot matrix and the correlation matrix, are their any pairs of variables that you suspect will cause a problem for the multicollinearity assumption? If so, which ones?
 
-< your response here > 
+Weight has a strong correlation with neck, chest, and abdomen so that will definitly cause a problem. We should probably also keep and eye on neck with chest and abdomen.
 
 #### 6. Fit a multiple linear regression model to the data (no transformations). Print a summary of the results. Save the residuals to the `bodyfat` data frame.
 
 ```{r}
-# your code here
+bodyfat_lm <- lm(brozek ~ ., data = bodyfat)
+summary(bodyfat_lm)
+round(bodyfat_lm$coefficients, 3)
 ```
 
 #### 7. Briefly comment on the "significance" of the variables: were you surprised by the results? Are there any variables that are significant that you think shouldn't be? Are there any variables that are not significant that you think should be?
 
-< your response here >
+The results mostly look okay, but chest should be significant. Our results are definitly being thrown off by a multi-colinearity problem.
 
 #### 8. Briefly comment on the sign (+/-) of the coefficients for the variables. Are their any variables where the sign is the opposite of what you expected?
 
-< your response here >
+Weight and neck have a negative sign when I would expect them to be positive. IE I would expect people who weigh more and have larger necks to have more body fat.
 
 #### 9. Mathematically write out the *fitted* multiple linear regression model for this data set using the coefficients you found above (do not use betas). Do not use "X" and "Y" in your model - use variable names that are fairly descriptive.
 
-< your response here >
+$\widehat{\text{brozek}}_i=-20.1+0.005\cdot\text{age}_i-0.087\cdot\text{weight}_i-0.140\cdot\text{height}_i-0.442\cdot\text{neck}_i+0.00048\cdot\text{chest}_i+0.875\cdot\text{abdomen}_i$
 
 #### 10. *Assuming* the model assumptions are all met, how would you interpret the coefficient for Weight?
 
-< your response here >
+For people with the same measurements in every other area, a one pound increase in weight results in a 0.087 percent increase in body fat.
 
 #### 11. Briefly explain what it means to "hold all else constant," when you interpret the coefficient for Weight?
 
-< your response here >
+"Holding all else constant" means that we are isolating the effect of one variable by looking at individuals with the same scores in all other categories.
 
 #### 12. Briefly explain what the F-test indicates, as reported in the model output from question 6.
 
-< your response here >
+A p-value of $2.2\times10^{-16}$ indicates that at least one of the variables in our model has a significant effect on body fat.
 
 #### 13. Briefly interpret the *adjusted* R-squared, as reported in the model output from question 6.
 
-< your response here >
+71% of the variability in body fat percentage can be explained by the predictors in our model.
 
 ### Questions 14-20 involve using diagnostics to determine if the linear regression assumptions are met. For each assumption, (1) perform appropriate diagnostics to determine if the assumption is violated, and (2) explain whether or not you think the assumption is violated and why you think that.
 
@@ -92,17 +109,47 @@ The data can be found in the BodyFat data set on Canvas. Download "BodyFat.txt",
 
 ```{r, fig.align='center'}
 # residual vs. predictor plots
-# your code here
+resid_vs_pred <- function(model) {
+  data <- model.frame(model)
+  predictors <- attr(model$terms, "term.labels")
+  residuals <- resid(model)
+  plots <- list()
+  for (i in predictors) {
+    plots[[i]] <- ggplot(data = data,
+                         mapping = aes(x = pull(data, i),
+                                       y = model$residuals)) +
+      geom_point() +
+      theme_minimal() +
+      theme(aspect.ratio = 1) +
+      xlab(i) +
+      ylab("Residuals")
+    plots[[i]]
+  }
+  plots["ncol"] <- ceiling(sqrt(length(plots)))
+  do.call(grid.arrange, plots)
+}
+resid_vs_pred(bodyfat_lm)
 ```
 
 ```{r, fig.align='center'}
 # partial regression plots
-# your code here
+added_variable_plots <- function(model) {
+  predictors <- attr(model$terms, "term.labels")
+  rows <- floor(sqrt(length(predictors)))
+  cols <- length(predictors) / rows
+  par(pty = "s", cex.lab = 1.5, cex.axis = 1.5)
+  avPlots(model, layout = c(rows, cols), pch = 19)
+}
+added_variable_plots(bodyfat_lm)
 ```
 
-```{r, fig.align='center'}
-# one other plot of your choice
-# your code here
+```{r, fig.align='center', warning=FALSE}
+resid_vs_fitted <- function(model) {
+  autoplot(model, which = 1, ncol = 1) +
+    theme_minimal() +
+    theme(aspect.ratio = 1)
+}
+resid_vs_fitted(bodyfat_lm)
 ```
 
 < your response here >
