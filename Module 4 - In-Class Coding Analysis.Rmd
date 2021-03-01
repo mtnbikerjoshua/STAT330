@@ -234,7 +234,39 @@ Check the scatterplot matrix, boxplot, histogram, normal probability plot, and t
 Note: you may wish to plot both cut-off lines since the sample size is right on the boundary of the rough cut-off value of $n = 30$. 
 
 ```{r, fig.align='center'}
-# your code here
+plot_dfbetas <- function(model) {
+  predictors <- attr(model$terms, "term.labels")
+  df_betas <- as_tibble(dfbetas(model)[, predictors])
+  
+  for (i in 1:ncol(df_betas)) {
+    dfbetas[i] %>%
+      desc() %>%
+      .[1:3]
+  }
+  
+  
+  water <- water %>%
+  mutate(dfbetas_precip = dfbetas(water.lm)[, "Precip"])
+names(water$dfbetas_precip) <- 1:nrow(water)
+top3dfbeta <- as.numeric(names(
+  sort(abs(water$dfbetas_precip), decreasing = TRUE)[1:3]
+))
+
+# Plot the DFBETAS against the observation number
+ggplot() + 
+  geom_point(data = water,
+             mapping = aes(x = as.numeric(rownames(water)), 
+                           y = abs(dfbetas_precip))) +
+  geom_text(mapping = aes(x = top3dfbeta,
+                          y = abs(water$dfbetas_precip[top3dfbeta]),
+                          label = top3dfbeta)) +
+  theme_bw() +
+  ylab("Absolute Value of DFBETAS for Runoff") +
+  xlab("Observation Number") +
+  geom_hline(mapping = aes(yintercept = 2 / sqrt(length(water$dfbetas_precip))),
+             color = "red", linetype = "dashed") +
+  theme(aspect.ratio = 1)
+}
 ```
 
 **(h) DFFITS**
