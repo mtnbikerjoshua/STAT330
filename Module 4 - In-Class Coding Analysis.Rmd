@@ -252,7 +252,15 @@ dfb_col <- function(df_betas, predictor, nLabels = 3) {
     theme(aspect.ratio = 1) +
     ylab("Abs of DFBETAS") +
     xlab("Observation Number") +
+<<<<<<< HEAD
     ggtitle(predictor)
+=======
+<<<<<<< HEAD
+    ggtitle(predictor)
+=======
+    ggtitle(i)
+>>>>>>> d6a29c874648d4ce2eadf8844c9a5633242abe81
+>>>>>>> a5ec499c0f07132c49e63b786ae795b5045f5be7
   
   if(length(dfbetas) <= 30) {
     out <- out +
