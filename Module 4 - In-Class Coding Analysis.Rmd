@@ -114,23 +114,22 @@ resid_vs_fitted(super_lm)
 ```
 
 **(c) Residuals vs. Predictor Plots (6 plots in total)**
-```{r, fig.align='center'}
-resid_vs_pred <- function(model) {
-  data <- model.frame(model)
-  predictors <- attr(model$terms, "term.labels")
-  residuals <- resid(model)
-  plots <- list()
-  for (i in predictors) {
-    plots[[i]] <- ggplot(data = data,
-                         mapping = aes(x = pull(data, i),
-                                       y = model$residuals)) +
+```{r, fig.align='center', fig.height=5}
+rpred_col <- function(data, residuals, predictor) {
+  ggplot(data = data,
+         mapping = aes(x = pull(data, predictor),
+                       y = residuals)) +
       geom_point() +
       theme_minimal() +
       theme(aspect.ratio = 1) +
-      xlab(i) +
+      xlab(predictor) +
       ylab("Residuals")
-    plots[[i]]
-  }
+}
+
+resid_vs_pred <- function(model) {
+  data <- model.frame(model)
+  predictors <- attr(model$terms, "term.labels")
+  plots <- lapply(predictors, rpred_col, data = data, residuals = resid(model))
   plots["ncol"] <- ceiling(sqrt(length(plots)))
   do.call(grid.arrange, plots)
 }
@@ -234,44 +233,80 @@ Check the scatterplot matrix, boxplot, histogram, normal probability plot, and t
 Note: you may wish to plot both cut-off lines since the sample size is right on the boundary of the rough cut-off value of $n = 30$. 
 
 ```{r, fig.align='center'}
+dfb_col <- function(df_betas, predictor, nLabels = 3) {
+  # Find which observations have the highest dfbetas
+  # top_vals <- df_betas[predictor] %>%
+  #   arrange(desc(abs(eval(parse(text = predictor))))) %>%
+  #   .[1:nLabels,] %>%
+  #   pull(predictor)
+  # top_ind <- which(pull(df_betas, i) %in% top_vals)
+  
+  out <- ggplot() +
+    geom_point(data = df_betas,
+               mapping = aes(x = as.numeric(rownames(df_betas)),
+                             y = abs(pull(df_betas, predictor)))) +
+    # geom_text(mapping = aes(x = top_ind,
+    #                         y = abs(top_vals),
+    #                         label = top_ind)) +
+    theme_bw() +
+    theme(aspect.ratio = 1) +
+    ylab("Abs of DFBETAS") +
+    xlab("Observation Number") +
+    ggtitle(predictor)
+  
+  if(length(dfbetas) <= 30) {
+    out <- out +
+      geom_hline(mapping = aes(yintercept = 1),
+                 color = "red", linetype = "dashed")
+  }else {
+    out <- out +
+      geom_hline(mapping = aes(yintercept = 2 / sqrt(length(dfbetas))),
+                 color = "red", linetype = "dashed")
+  }
+  return(out)
+}
+
 
 plot_dfbetas <- function(model, nLabels = 3) {
   predictors <- attr(model$terms, "term.labels")
   df_betas <- as_tibble(dfbetas(model)[, predictors])
   
-  plots <- list()
-  for (i in predictors) {
+
+  # for (i in predictors) {
     # Find which observations have the highest dfbetas
-    top_vals <- df_betas[i] %>%
-      arrange(desc(abs(eval(parse(text = i))))) %>%
-      .[1:nLabels,] %>%
-      pull(i)
-    top_ind <- which(pull(df_betas, i) %in% top_vals)
+    # top_vals <- df_betas[i] %>%
+    #   arrange(desc(abs(eval(parse(text = i))))) %>%
+    #   .[1:nLabels,] %>%
+    #   pull(i)
+    # top_ind <- which(pull(df_betas, i) %in% top_vals)
     
     # Plot the dfbetas against observation number and label the highest ones
-    plots[[i]] <- ggplot() +
-      geom_point(data = df_betas,
-                 mapping = aes(x = as.numeric(rownames(df_betas)),
-                               y = abs(pull(df_betas, i)))) +
-      geom_text(mapping = aes(x = top_ind,
-                              y = abs(top_vals),
-                              label = top_ind)) +
-      theme_bw() +
-      theme(aspect.ratio = 1) +
-      ylab("Abs of DFBETAS") +
-      xlab("Observation Number") +
-      ggtitle(i)
-    
-    if(length(dfbetas) <= 30) {
-      plots[[i]] <- plots[[i]] +
-        geom_hline(mapping = aes(yintercept = 1),
-                   color = "red", linetype = "dashed")
-    }else {
-      plots[[i]] <- plots[[i]] +
-        geom_hline(mapping = aes(yintercept = 2 / sqrt(length(dfbetas))),
-                   color = "red", linetype = "dashed")
-    }
-  }
+  #   plots[[i]] <- ggplot() +
+  #     geom_point(data = df_betas,
+  #                mapping = aes(x = as.numeric(rownames(df_betas)),
+  #                              y = abs(pull(df_betas, i)))) +
+  #     geom_text(mapping = aes(x = top_ind,
+  #                             y = abs(top_vals),
+  #                             label = top_ind)) +
+  #     theme_bw() +
+  #     theme(aspect.ratio = 1) +
+  #     ylab("Abs of DFBETAS") +
+  #     xlab("Observation Number") +
+  #     ggtitle(i)
+  #   
+  #   if(length(dfbetas) <= 30) {
+  #     plots[[i]] <- plots[[i]] +
+  #       geom_hline(mapping = aes(yintercept = 1),
+  #                  color = "red", linetype = "dashed")
+  #   }else {
+  #     plots[[i]] <- plots[[i]] +
+  #       geom_hline(mapping = aes(yintercept = 2 / sqrt(length(dfbetas))),
+  #                  color = "red", linetype = "dashed")
+  #   }
+  #   print(i)
+  #   print(plots[["Complaints"]])
+  # }
+  plots <- lapply(predictors, dfb_col, df_betas = df_betas)
   plots["ncol"] <- ceiling(sqrt(length(plots)))
   do.call(grid.arrange, plots)
 }
