@@ -157,81 +157,201 @@ resid_vs_fitted <- function(model) {
 resid_vs_fitted(bodyfat_lm)
 ```
 
-This assumption is met. There are a few outliers that mess up the plots, but the scatterplots look really good and so do the residuals vs predictors except the outliers.
+This assumption is met. There are a few outliers that mess up the plots, but the scatterplots and residuals vs fitted values look really good and so do the residuals vs predictors except the outliers. The added variable plots also look linear.
 
 #### 15. (I) The residuals are independent (no diagnostic tools - just think about how the data was collected and briefly write your thoughts)
 
-< your response here >
+With the information we have, we have no reason to think that the data might be dependent in any way. This assumption is met.
 
 #### 16. (N) The residuals are normally distributed and centered at zero (use all four diagnostic tools)
 
 ```{r, fig.align='center'}
-# Diagnostic 1
-# your code here
+# Boxplot
+make_boxplot <- function(model) {
+  residuals <- data.frame(residuals = resid(model))
+  ggplot(data = residuals, mapping = aes(y = residuals)) +
+  geom_boxplot() +
+  stat_summary(mapping = aes(x = 0),
+               fun = mean, geom = "point",
+               shape = 4, size = 2, color = "darkred") +
+  theme_classic() +
+  theme(aspect.ratio = 2,
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank()) +
+#  scale_y_continuous(limits = c(-20000, 30000), breaks = seq(-20000, 30000, 10000)) +
+  ylab("Residuals") +
+  xlab("")
+}
+make_boxplot(bodyfat_lm)
 ```
 
 ```{r, fig.align='center'}
-# Diagnostic 2
-# your code here
+# Histogram
+make_hist <- function(model) {
+  residuals <- data.frame(residuals = resid(model))
+  ggplot(data = residuals, mapping = aes(x = residuals)) +
+  geom_histogram(binwidth = sd(residuals$residuals / 4), mapping = aes(y = ..density..)) +
+  stat_function(fun = dnorm,
+                color = "blue",
+                args = list(mean = 0,
+                            sd = sd(residuals$residuals)),
+                size = 1.2) +
+  xlab("Residuals") +
+  ylab("Density") +
+  theme_light()
+}
+make_hist(bodyfat_lm)
 ```
 
 ```{r, fig.align='center'}
-# Diagnostic 3
-# your code here
+# Q-Q
+QQPlot <- function(model) {
+  autoplot(model, which = 2, ncol = 1) +
+    theme_bw() +
+    theme(aspect.ratio = 1)
+}
+QQPlot(bodyfat_lm)
 ```
 
 ```{r, fig.align='center'}
-# Diagnostic 4
-# your code here
+# Shapiro-Wilk
+shapiro.test(bodyfat_lm$residuals)
 ```
 
-< your response here >
+All four indicators clearly indicate the the residuals are normally distributed. This assumption is met.
 
 #### 17. (E) The residuals have equal/constant variance across all values of X (only one diagnostic tool)
 
 ```{r, fig.align='center'}
-# your code here
+resid_vs_fitted(bodyfat_lm)
 ```
 
-< your response here >
+There are no clear trends or horn shapes in the residuals. This assumption is met.
 
 #### 18. (A) The model describes all observations (i.e., there are no influential points) (use Cook's distance, DFBETAS, and DFFITS. Also, in your response, refer to the evidence from the plots you created in previous questions)
 
 ```{r, fig.align='center'}
 # Cook's Distance
-# your code here
+cooksd_plot <- function(model, nLabels = 3) {
+  cooks_d <- cooks.distance(model)
+  top_cd <- as.numeric(names(sort(cooks_d, decreasing = TRUE)[1:nLabels]))
+  
+  ggplot() +
+  geom_point(data = tibble(cooks_d),
+             mapping = aes(x = as.numeric(names(cooks_d)), 
+                           y = cooks_d)) +
+  geom_text(mapping = aes(x = top_cd,
+                          y = cooks_d[top_cd] + max(cooks_d) / 40,
+                          label = top_cd)) +
+  theme_bw() +
+  ylab("Cook's Distance") +
+  xlab("Observation Number") +
+  geom_hline(mapping = aes(yintercept = 4 / length(cooks_d)),
+             color = "red", linetype = "dashed") +
+  theme(aspect.ratio = 1)
+}
+cooksd_plot(bodyfat_lm)
 ```
 
 ```{r, fig.align='center'}
 # DFBETAS
-# your code here
+dfb_col <- function(df_betas, predictor, nLabels = 3) {
+  # Find which observations have the highest dfbetas
+   top_vals <- df_betas[predictor] %>%
+    arrange(desc(abs(eval(parse(text = predictor))))) %>%
+    .[1:nLabels,] %>%
+    pull(predictor)
+  top_ind <- which(pull(df_betas, predictor) %in% top_vals)
+  
+  out <- ggplot() +
+    geom_point(data = df_betas,
+               mapping = aes(x = as.numeric(rownames(df_betas)),
+                             y = abs(pull(df_betas, predictor)))) +
+     geom_text(mapping = aes(x = top_ind,
+                             y = abs(pull(df_betas, predictor)[top_ind]) + 0.07,
+                             label = top_ind)) +
+    theme_bw() +
+    theme(aspect.ratio = 1) +
+    ylab("Abs of DFBETAS") +
+    xlab("Observation Number") +
+    ggtitle(predictor)
+  
+  if(length(dfbetas) <= 30) {
+    out <- out +
+      geom_hline(mapping = aes(yintercept = 1),
+                 color = "red", linetype = "dashed")
+  }else {
+    out <- out +
+      geom_hline(mapping = aes(yintercept = 2 / sqrt(length(dfbetas))),
+                 color = "red", linetype = "dashed")
+  }
+  return(out)
+}
+
+
+plot_dfbetas <- function(model, nLabels = 3) {
+  predictors <- attr(model$terms, "term.labels")
+  df_betas <- as_tibble(dfbetas(model)[, predictors])
+
+  plots <- lapply(predictors, dfb_col, df_betas = df_betas)
+  plots["ncol"] <- ceiling(sqrt(length(plots)))
+  do.call(grid.arrange, plots)
+}
+plot_dfbetas(bodyfat_lm)
 ```
 
 ```{r, fig.align='center'}
 # DFFITS
-# your code here
+plot_dffits <- function(model, nLabels = 3) {
+  df_fits <- dffits(model)
+  top_dff <- as.numeric(names(sort(abs(df_fits), decreasing = TRUE)[1:nLabels]))
+  
+  df_fits_plot <- ggplot() + 
+    geom_point(data = tibble(df_fits),
+               mapping = aes(x = as.numeric(names(df_fits)), 
+                             y = abs(df_fits))) +
+    geom_text(mapping = aes(x = top_dff,
+                            y = abs(df_fits[top_dff]) + 0.05,
+                            label = top_dff)) +
+    theme_bw() +
+    ylab("Absolute Value of DFFITS for Y") +
+    xlab("Observation Number") +
+    theme(aspect.ratio = 1)
+  if(length(df_fits) <= 30) {
+    df_fits_plot +
+      geom_hline(mapping = aes(yintercept = 
+                                 2 * sqrt(length(model$coefficients) /
+                                                       length(df_fits))),
+                 color = "red", linetype = "dashed")
+  }else {
+    df_fits_plot +
+      geom_hline(mapping = aes(yintercept = 1),
+                 color = "red", linetype = "dashed")
+  }
+}
+plot_dffits(bodyfat_lm)
 ```
 
-< your response here >
+As far as I can tell, we would only be worried about observation 39 which, in every plot, seems to be extremely far from the rest of the data. Most likely it is a recording error or something of the sort. If we discover that that is the case we could removve it and continue the analysis without it. For now, this assumption is not met.
 
 #### 19. (R) Additional predictor variables are not required (no diagnostic tools - just think about the variables you have and if there are other variables you think would help predict the response)
 
-< your response here >
+Those seem like a pretty good set of predictors. I can't think of anything else that would help predict body fat. This assumption is met.
 
 #### 20. No multicollinearity (for this assumption, compute the variance inflation factors (VIFs) and compare the VIFs to your comments in questions 5. Do the variance inflation factors match your assumptions from questions 5? Is this assumption met?
 
 ```{r, fig.align='center'}
-# your code here
+vif(bodyfat_lm)
 ```
 
-< your response here >
+Based on the variance inflation factors I would be worried about the same three variables from question 5: weight, abdomen, and chest.
 
 ### Note: your next homework assigment will use this same data set, and you will be asked to fix the assumptions that were broken.
 
 #### 21. Briefly summarize what you learned, personally, from this analysis about the statistics, model fitting process, etc.
 
-< your response here >
+I learned *a lot* about plots in R by coming up with functions for the various plots. The effects of multi-colinearity were emphasized and clarified for me. Other than that it was pretty similar to simple linear regression.
 
 #### 22. Briefly summarize what you learned from this analysis *to a non-statistician*. Write a few sentences about (1) the purpose of this data set and analysis and (2) what you learned about this data set from your analysis. Write your response as if you were addressing a business manager (avoid using statistics jargon) and just provide the main take-aways.
 
-< your response here >
+The purpose of this data was to determine an easier way of measuring body fat than submergence. We tried to come up with a way of roughly calculating body fat based on age, weight and body measurements. We found that such a technique is viable, however, we still need to do more work to determine the exact method.
