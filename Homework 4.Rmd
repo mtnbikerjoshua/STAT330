@@ -312,7 +312,11 @@ plot_dffits <- function(model, nLabels = 3) {
                              y = abs(df_fits))) +
     geom_text(mapping = aes(x = top_dff,
                             y = abs(df_fits[top_dff]) + 0.05,
+<<<<<<< HEAD
                             label = top_dff)) +
+=======
+                            label = top_cd)) +
+>>>>>>> 39dfdf0726b249354d6ff10b6f43cf40a7749a0c
     theme_bw() +
     ylab("Absolute Value of DFFITS for Y") +
     xlab("Observation Number") +
