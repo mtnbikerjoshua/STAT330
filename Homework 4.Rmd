@@ -1,7 +1,7 @@
 ---
 title: "Homework 4"
 subtitle: <center> <h1>Multiple Linear Regression</h1> </center>
-author: <center> < PUT YOUR NAME HERE > <center>
+author: <center> Joshua Carpenter <center>
 output: html_document
 ---
 
@@ -55,11 +55,13 @@ I think that weight, neck chest and abdomen will be useful in predicting brozek 
 
 #### 4. Create and print a correlation matrix (numeric or color- and shape-coded).
 
-```{r, fig.height=3}
+```{r, fig.height=4}
 show_cor <- function(data) {
   par(mfrow = c(1, 2))
   corrplot(cor(data), method = "number", type = "upper", diag = F, tl.col = "#1f3366", cl.pos = "n")
+  title("Correlation Coefficients")
   corrplot(cor(data), type = "upper", diag = F, tl.col = "#1f3366", cl.pos = "n")
+  title("Correlation Matrix")
 }
 show_cor(bodyfat)
 ```
@@ -110,25 +112,25 @@ A p-value of $2.2\times10^{-16}$ indicates that at least one of the variables in
 
 ```{r, fig.align='center', fig.height=5, message=FALSE}
 # residual vs. predictor plots
+rpred_col <- function(data, residuals, predictor) {
+  ggplot(data = data,
+         mapping = aes(x = pull(data, predictor),
+                       y = residuals)) +
+    geom_point() +
+    geom_smooth(se = FALSE, span = 0.95, n = 7, size = 0.5) +
+    geom_abline(slope = 0, intercept = 0, linetype = "dashed") +
+    theme_minimal() +
+    theme(aspect.ratio = 1) +
+    xlab(predictor) +
+    ylab("Residuals")
+}
+
 resid_vs_pred <- function(model) {
   data <- model.frame(model)
   predictors <- attr(model$terms, "term.labels")
-  residuals <- resid(model)
-  plots <- list()
-  for (i in predictors) {
-    plots[[i]] <- ggplot(data = data,
-                         mapping = aes(x = pull(data, i),
-                                       y = model$residuals)) +
-      geom_point() +
-      geom_smooth(span = 0.8, n= 10, size = 0.5, se = FALSE) +
-      theme_minimal() +
-      theme(aspect.ratio = 1) +
-      xlab(i) +
-      ylab("Residuals")
-    plots[[i]]
-  }
+  plots <- lapply(predictors, rpred_col, data = data, residuals = resid(model))
   plots["ncol"] <- ceiling(sqrt(length(plots)))
-  #plots["top"] <- textGrob("Residuals vs Predictores", gp=gpar(fontsize=30))
+  plots["top"] <- "Residuals vs Predictors"
   do.call(grid.arrange, plots)
 }
 resid_vs_pred(bodyfat_lm)
@@ -155,7 +157,7 @@ resid_vs_fitted <- function(model) {
 resid_vs_fitted(bodyfat_lm)
 ```
 
-< your response here >
+This assumption is met. There are a few outliers that mess up the plots, but the scatterplots look really good and so do the residuals vs predictors except the outliers.
 
 #### 15. (I) The residuals are independent (no diagnostic tools - just think about how the data was collected and briefly write your thoughts)
 
