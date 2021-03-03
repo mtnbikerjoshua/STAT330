@@ -165,7 +165,7 @@ No code to test this assumption - you just have to think about it.
 **(a) Boxplot**
 ```{r, fig.align='center'}
 make_boxplot <- function(model) {
-  residuals <- data.frame(residuals = resid(super_lm))
+  residuals <- data.frame(residuals = resid(model))
   ggplot(data = residuals, mapping = aes(y = residuals)) +
   geom_boxplot() +
   stat_summary(mapping = aes(x = 0),
@@ -185,7 +185,7 @@ make_boxplot(super_lm)
 **(b) Histogram**
 ```{r, fig.align='center'}
 make_hist <- function(model) {
-  residuals <- data.frame(residuals = resid(super_lm))
+  residuals <- data.frame(residuals = resid(model))
   ggplot(data = residuals, mapping = aes(x = residuals)) +
   geom_histogram(binwidth = sd(residuals$residuals / 4), mapping = aes(y = ..density..)) +
   stat_function(fun = dnorm,
@@ -202,12 +202,17 @@ make_hist(super_lm)
 
 **(c) Normal Probability Plot**
 ```{r, fig.align='center'}
-# your code here
+QQPlot <- function(model) {
+  autoplot(model, which = 2, ncol = 1) +
+    theme_bw() +
+    theme(aspect.ratio = 1)
+}
+QQPlot(super_lm)
 ```
 
 **(d) Shapiro-Wilk Test**
 ```{r}
-# your code here
+shapiro.test(super_lm$residuals)
 ```
 
 ### 4. The residuals have constant variance across all values of the X's
@@ -230,7 +235,26 @@ Check the scatterplot matrix, boxplot, histogram, normal probability plot, and t
 
 **(f) Cook's Distance**
 ```{r, fig.align='center'}
-# your code here
+cooksd_plot <- function(model, nLabels = 3) {
+  cooks_d <- cooks.distance(model)
+  top_cd <- as.numeric(names(sort(cooks_d, decreasing = TRUE)[1:nLabels]))
+  
+  ggplot() +
+  geom_point(data = tibble(cooks_d),
+             mapping = aes(x = as.numeric(names(cooks_d)), 
+                           y = cooks_d)) +
+  geom_text(mapping = aes(x = top_cd,
+                          y = cooks_d[top_cd] + max(cooks_d) / 40,
+                          label = top_cd)) +
+  theme_bw() +
+  ylab("Cook's Distance") +
+  xlab("Observation Number") +
+  geom_hline(mapping = aes(yintercept = 4 / length(cooks_d)),
+             color = "red", linetype = "dashed") +
+  theme(aspect.ratio = 1)
+}
+cooksd_plot(super_lm)
+
 ```
 
 **(g) DFBETAS (6 plots total)**
@@ -286,7 +310,34 @@ plot_dfbetas(super_lm)
 **(h) DFFITS**
 
 ```{r, fig.align='center'}
-
+plot_dffits <- function(model, nLabels = 3) {
+  df_fits <- dffits(model)
+  top_dff <- as.numeric(names(sort(abs(df_fits), decreasing = TRUE)[1:nLabels]))
+  
+  df_fits_plot <- ggplot() + 
+    geom_point(data = tibble(df_fits),
+               mapping = aes(x = as.numeric(names(df_fits)), 
+                             y = abs(df_fits))) +
+    geom_text(mapping = aes(x = top_dff,
+                            y = abs(df_fits[top_dff]) + max(df_fits) / 40,
+                            label = top_cd)) +
+    theme_bw() +
+    ylab("Absolute Value of DFFITS for Y") +
+    xlab("Observation Number") +
+    theme(aspect.ratio = 1)
+  if(length(df_fits) <= 30) {
+    df_fits_plot +
+      geom_hline(mapping = aes(yintercept = 
+                                 2 * sqrt(length(model$coefficients) /
+                                                       length(df_fits))),
+                 color = "red", linetype = "dashed")
+  }else {
+    df_fits_plot +
+      geom_hline(mapping = aes(yintercept = 1),
+                 color = "red", linetype = "dashed")
+  }
+}
+plot_dffits(super_lm)
 ```
 
 ### 6. All important predictors are included 
