@@ -31,7 +31,7 @@ The World Health Organization (WHO) and United Nations (UN) were interested in f
 
 The purpose of this analysis is to find which factors are correlated with life expectancy and their relationship. We expect to find that having a greater proportion of the population immunized will lead to increased life expectency and that greater schooling will also be associated with greater life expectancy, although especially in that case we do not believe there is necessarily a causal relationship.\
 
-To anylize these hypotheses, we will permorm linear regression using `life.expectancy` as our response variable. We will check the assumptions of linear regression and remove or transform variables as necessary. If two or more of the variables are highly correlated, we will use several variable selction and shrinkage methods to choose the most appropriate subset. If transformations are necessary, we will use the Box-Cox method and plots of different transformations to help us determine the best one. After performing regression, we will examine the model and the hypothesis tests to see which variables are significant and how they affect life expectancy. Finally, we will provide our results along with confidence intervals.
+To analyze these hypotheses, we will permorm linear regression using `life.expectancy` as our response variable. We will check the assumptions of linear regression and remove or transform variables as necessary. If two or more of the variables are highly correlated, we will use several variable selction and shrinkage methods to choose the most appropriate subset. If transformations are necessary, we will use the Box-Cox method and plots of different transformations to help us determine the best one. After performing regression, we will examine the model and the hypothesis tests to see which variables are significant and how they affect life expectancy. Finally, we will provide our results along with confidence intervals.
 
 # Methods and Results
 
@@ -48,7 +48,8 @@ life_expect <- read_csv("lifeexpect.csv") %>%
   select(Life.Expectancy, Adult.Mortality, Hepatitis.B, Measles, BMI, Polio,
          Diphtheria, GDP, Population, Schooling, Developed)
 
-# Summary of the data
+# Head and summary of the data
+life_expect
 summary(life_expect)
 
 # Function to create scatterplot matrix of `data`
