@@ -1,0 +1,63 @@
+---
+title: "Group Project 2"
+subtitle: <center> Intro and EDA </center>
+author: <center> Joshua Carpenter, Yong-Nan Chan, Andy Phillips, and Brandon Fletcher <center>
+output: html_document
+---
+
+<style type="text/css">
+h1.title {
+  font-size: 40px;
+  text-align: center;
+  color: #454545
+}
+.subtitle {
+  margin-top: 6px;
+  margin-bottom: 15px;
+  color: #878787
+}
+</style>
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(ggfortify)  # Plot lm objects using ggplot instead of base R
+library(car)  # For added-variable plots, dfbetas and dffits
+library(corrplot)  # For colored correlation matrix
+library(gridExtra)  # For putting multiple ggplots in one plot
+```
+
+# Background and Introduction
+The World Health Organization (WHO) and United Nations (UN) were interested in factors affecting life expectancy in countries around the world. In 2015 they collected demographic and immunization data from 130 countries.\
+
+The purpose of this analysis is to find which factors are correlated with life expectancy and their relationship. We expect to find that having a greater proportion of the population immunized will lead to increased life expectency and that greater schooling will also be associated with greater life expectancy, although especially in that case we do not believe there is necessarily a causal relationship.\
+
+To anylize these hypotheses, we will permorm linear regression using `life.expectancy` as our response variable. We will check the assumptions of linear regression and remove or transform variables as necessary. If two or more of the variables are highly correlated, we will use several variable selction and shrinkage methods to choose the most appropriate subset. If transformations are necessary, we will use the Box-Cox method and plots of different transformations to help us determine the best one. After performing regression, we will examine the model and the hypothesis tests to see which variables are significant and how they affect life expectancy. Finally, we will provide our results along with confidence intervals.
+
+# Methods and Results
+
+## Exloratory Data Analysis
+```{r, message = FALSE, fig.height = 10, fig.width = 10}
+# Read in the data
+life_expect <- read_csv("lifeexpect.csv") %>%
+  # Change Status into a numeric variable where 1 means
+  #   developed and 0 means developing
+  mutate(Developed = ifelse(Status == "Developed", 1, 0),
+         # Fix capitalization on Life.expectancy
+         Life.Expectancy = Life.expectancy) %>%
+  # Remove un-needed columns
+  select(Life.Expectancy, Adult.Mortality, Hepatitis.B, Measles, BMI, Polio,
+         Diphtheria, GDP, Population, Schooling, Developed)
+
+# Summary of the data
+summary(life_expect)
+
+# Function to create scatterplot matrix of `data`
+point_matrix <- function(data) {
+  par(pty = "s", las = 1)
+  pairs(data, pch = 19, lower.panel = NULL)
+}
+
+# Scatterplot
+point_matrix(life_expect)
+```
+
