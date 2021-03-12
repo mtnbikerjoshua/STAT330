@@ -1,7 +1,7 @@
 ---
 title: "Homework 5"
 subtitle: <center> <h1>Multiple Linear Regression Variable Selection Methods</h1> </center>
-author: <center> < PUT YOUR NAME HERE > <center>
+author: <center> Joshua Carpenter <center>
 output: html_document
 ---
 
@@ -13,7 +13,12 @@ text-align: center;
 </style>
 
 ```{r setup, include=FALSE}
-# load packages here
+library(tidyverse)
+library(ggfortify)  # plot lm objects using ggplot instead of base R
+library(car)  # needed for added-variable plots and dfbetas and dffits
+library(corrplot)  # colored correlation matrix
+library(gridExtra)  # NEW PACKAGE for putting multiple ggplots in one plot
+set.seed(6865)
 ```
 
 ### Data and Description
@@ -33,21 +38,24 @@ The data can be found in the BodyFat data set on Canvas. Download BodyFat.txt, a
 #### 1. Read in the data set, and call the data frame "bodyfat_orig". Print a summary of the data and make sure the data makes sense. 
 
 ```{r}
-# your code here
+bodyfat_orig <- read.csv("bodyfat.txt", sep = " ", row.names = 1)
+(bodyfat_orig <- tibble(bodyfat))
+summary(bodyfat_orig)
 ```
 
 #### 2. Refer back to your Homework 4. In that assignment, you fit this multiple linear regression model: for each of the multiple linear regression assumptions listed below, state if they were met or not met.
 
-1. The X’s vs Y are linear:   < your response here: met or not met? >
-2. The residuals are normally distributed and centered at zero:   < your response here: met or not met? >
-3. The residuals are homoscedastic:   < your response here: met or not met? >
-4. The model describes all observations (i.e., there are no influential points):   < your response here: met or not met? >
-5. No multicollinearity:   < your response here: met or not met? >
+1. The X’s vs Y are linear:   Met
+2. The residuals are normally distributed and centered at zero:   Met
+3. The residuals are homoscedastic:   Met
+4. The model describes all observations (i.e., there are no influential points):   Not met
+5. No multicollinearity:   Not met
 
 #### 3. There is one clear influential point in the data set. Create a new variable called "bodyfat" that contains the bodyfat_orig data set with the influential point removed. Use the bodyfat data set throughout the rest of the assignment.
 
 ```{r, fig.align='center'}
-# your code here
+bodyfat <- bodyfat_orig %>%
+  slice(-39)
 ```
 
 
@@ -58,11 +66,11 @@ The data can be found in the BodyFat data set on Canvas. Download BodyFat.txt, a
 
 #### 4. Briefly explain why multicollinearity is a problem for multiple linear regression by identifying some (at least two) of the consequences of multicollinearity.
 
-< your response here >
+One of the consequences of multicollinearity is inflated variance which leads to wide confidence intervals. Another consequence is potentially inaccurate coefficients and hypothesis tests; variable can appear significant that aren't and vise versa and coefficients can have the opposite sign that they should.
 
 #### 5. Briefly explain the similarities and differences between the following methods: best subset, forward, backward, and sequential replacement. Do not just copy the algorithm from the class notes - use your own words to explain what these methods are doing.
 
-< your response here >
+The best subset is the most thorough and preferable method. It compares all possible models and selects the best one. Forward selection is basically useless, but is the basis for the other two. It starts with an intercept model and adds variables that improve the model. Backward does the opposite; it starts with all variables and removes the ones that do not improve the model. Sequential starts with an intercept only model, adds variables one by one that improve the model and with each step also removes variables that don't improve the model. When best subsets is not possible, sequential replacement is probably the best bet.
 
 #### 6. Briefly explain how shrinkage methods work (variance-bias tradeoff). Specifically, how can some of these methods be considered variable selection procedures?
 
