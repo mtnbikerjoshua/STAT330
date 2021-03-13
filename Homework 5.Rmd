@@ -13,11 +13,13 @@ text-align: center;
 </style>
 
 ```{r setup, include=FALSE}
-library(tidyverse)
-library(ggfortify)  # plot lm objects using ggplot instead of base R
-library(car)  # needed for added-variable plots and dfbetas and dffits
-library(corrplot)  # colored correlation matrix
 library(gridExtra)  # NEW PACKAGE for putting multiple ggplots in one plot
+library(tidyverse)
+library(corrplot)  # colored correlation matrix
+library(ggfortify)  # plot glmnet objects using ggplot instead of base R
+library(car)  # needed for VIFs
+library(bestglm)  # for stepwise methods
+library(glmnet)  # for ridge, lasso, and elastic net
 set.seed(6865)
 ```
 
@@ -83,37 +85,64 @@ The best subset is the most thorough and preferable method. It compares all poss
 #### 8. Remember, when coding these methods, the response variable must be the last column in the data set for the `bestglm` function to work. Switch the order of the columns in the data set so that brozek is last.
 
 ```{r, fig.align='center'}
-# your code here
+bodyfat <- bodyfat %>%
+  select(age, weight, height, neck, chest, abdom, brozek)
+bodyfat_df <- data.frame(bodyfat)
 ```
 
 #### 9. Apply the best subsets variable selection procedure to this data set. You may choose which metric you would like to use (ex: AIC, BIC, PMSE). Output a summary of the "best" model.
 
 ```{r, fig.align='center'}
-# your code here
+best_subsets <- bestglm(bodyfat_df, IC = "AIC", method = "exhaustive")
+best_subsets$BestModels
+summary(best_subsets$BestModel)
 ```
 
 #### 10. Apply the forward selection procedure to this data set. You may choose which metric you would like to use (ex: AIC, BIC, PMSE). Output a summary of the "best" model.
 
 ```{r, fig.align='center'}
-# your code here
+forward <- bestglm(bodyfat_df, IC = "AIC", method = "forward")
+forward$BestModels
+summary(forward$BestModel)
 ```
 
 #### 11. Apply the backward selection procedure to this data set. You may choose which metric you would like to use (ex: AIC, BIC, PMSE). Output a summary of the "best" model.
 
 ```{r, fig.align='center'}
-# your code here
+backward <- bestglm(bodyfat_df, IC = "AIC", method = "backward")
+backward$BestModels
+summary(backward$BestModel)
 ```
 
 #### 12. Apply the sequential replacement selection procedure to this data set. You may choose which metric you would like to use (ex: AIC, BIC, PMSE). Output a summary of the "best" model.
 
 ```{r, fig.align='center'}
-# your code here
+seqrep <- bestglm(bodyfat_df, IC = "AIC", method = "seqrep")
+seqrep$BestModels
+summary(seqrep$BestModel)
 ```
 
 #### 13. Apply LASSO to this data set using the MSE metric. Output the coefficient values corresponding to the 1 standard error rule (do not output any plots).
 
 ```{r, fig.align='center'}
-# your code here
+bodyfat_predictors <- bodyfat %>%
+  select(-brozek) %>%
+  as.matrix()
+bodyfat_response <- bodyfat %>%
+  select(brozek) %>%
+  as.matrix()
+
+# Use cross validation to pick the best penalty parameter based on MSE
+bodyfat_lasso <- cv.glmnet(x = bodyfat_predictors, y = bodyfat_response,
+                           type.measure = "mse", alpha = 1)
+# Plot log(lambda) against MSE
+autoplot(bodyfat_lasso, label = FALSE) +
+  theme_bw() +
+  theme(aspect.ratio = 1)
+# Pick the lambda value within 1 SE of the minimum MSE
+bodyfat_lasso$lambda.1se
+# Print the selected coefficients using the 1 SE lambda
+coef(bodyfat_lasso, s = "lambda.1se")
 ```
 
 #### 14. Apply Elastic Net to this data set using the MSE metric. Output the coefficient values corresponding to the 1 standard error rule (do not output any plots).
