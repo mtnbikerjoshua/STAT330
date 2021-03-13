@@ -80,7 +80,7 @@ Shrinkage methods introduce a little bit of bias in order to greatly reduce vari
 
 #### 7. Briefly explain the similarities/difference between ridge regression, LASSO, and elastic net.
 
-All three methods shrink coefficients 
+All three methods shrink coefficients, but ridge regression is not a variable selection method and therefore falls in a slightly different category than the other two. Each method applies a penalty to the normal OLS cost function for larger betas, then minimizes that cost function. In the case of LASSO and Elastic Net, some coefficients shrink to 0 leaving behind only the most useful variables.
 
 #### 8. Remember, when coding these methods, the response variable must be the last column in the data set for the `bestglm` function to work. Switch the order of the columns in the data set so that brozek is last.
 
@@ -173,35 +173,44 @@ elastic$lambda.1se
 Forgive  my not following the instructions. I found coding the table to be much more satisfying that manually entering it. I switched the rows and columns because I found it much easier to read this way.
 
 ```{r}
+# Create a matrix to be filled with booleans
 models_table <- matrix(ncol = ncol(bodyfat_predictors),
                        nrow = length(best_models))
 rownames(models_table) <- c("Best Subset", "Forward", "Backward",
                             "Sequential Rep.", "LASSO", "Elastic Net")
 colnames(models_table) <- colnames(bodyfat_predictors)
+
+# Loop through the models and populate the matrix with the included variables
 for(i in 1:length(best_models)) {
   model <- best_models[[i]]
+  # For the shrinkage methods we saved a matrix of the coefficients
   if("dgCMatrix" %in% class(model)) {
     models_table[i, ] <-
       colnames(bodyfat_predictors) %in%
       rownames(model)[attr(model, "i") + 1] # +1 for 1 based indexing
-  }else {
+  }
+  # For the other methods we saved the best model
+  else {
     models_table[i, ] <-
       colnames(bodyfat_predictors) %in%
       names(model$coefficients)
   }
 }
+
+# Print the matrix using X's in place of TRUE's
 noquote(ifelse(models_table, "X", ""))
 ```
 
 
 #### 16. Now that you have seen the various results from the different methods, pick a subset of variables that you will include in the model. Which variables do you choose to include in the model? Why?
 
-< your response here >
+I will include `height`, `neck` and `abdom`. `height` and `abdom` are obvious choices since they are chosen by all the models. `neck` is excluded by the shrinkage models, but it is included by the other ones and logically it seems like neck is a good predictor of BMI. `chest` could be good, but I choose to exclude it because it is highly correlated with `abdom`.
 
 #### 17. Create the multiple linear regression model with the variables you listed in the previous question (alternatively, you can call the best model using $BestModel). Print a summary of the results.
 
 ```{r, fig.align='center'}
-# your code here
+bodyfat_lm <- lm(brozek ~ height + neck + abdom, data = bodyfat)
+summary(bodyfat_lm)
 ```
 
 
@@ -217,59 +226,261 @@ noquote(ifelse(models_table, "X", ""))
 #### 18. (L) The Xs vs Y are linear (use all four diagnostics)
 
 ```{r, fig.align='center'}
-# your code here
+bodyfat_select <- bodyfat %>%
+  select(brozek, abdom, height, neck)
+
+# Scatterplot matrix
+point_matrix <- function(data) {
+  par(pty = "s", las = 1)
+  pairs(data, pch = 19, lower.panel = NULL)
+}
+point_matrix(bodyfat_select)
+
+# residual vs. predictor plots
+rpred_col <- function(data, residuals, predictor) {
+  ggplot(data = data,
+         mapping = aes(x = pull(data, predictor),
+                       y = residuals)) +
+    geom_point() +
+    geom_smooth(se = FALSE, span = 0.95, n = 7, size = 0.5) +
+    geom_abline(slope = 0, intercept = 0, linetype = "dashed") +
+    theme_minimal() +
+    theme(aspect.ratio = 1) +
+    xlab(predictor) +
+    ylab("Residuals")
+}
+
+resid_vs_pred <- function(model) {
+  data <- model.frame(model)
+  predictors <- attr(model$terms, "term.labels")
+  plots <- lapply(predictors, rpred_col, data = data, residuals = resid(model))
+  plots["ncol"] <- ceiling(sqrt(length(plots)))
+  plots["top"] <- "Residuals vs Predictors"
+  do.call(grid.arrange, plots)
+}
+resid_vs_pred(bodyfat_lm)
+
+# partial regression plots
+added_variable_plots <- function(model) {
+  predictors <- attr(model$terms, "term.labels")
+  rows <- floor(sqrt(length(predictors)))
+  cols <- length(predictors) / rows
+  par(pty = "s", cex.lab = 1.5, cex.axis = 1.5)
+  avPlots(model, layout = c(rows, cols), pch = 19)
+}
+added_variable_plots(bodyfat_lm)
+
+# residuals vs fitted values
+resid_vs_fitted <- function(model) {
+  autoplot(model, which = 1, ncol = 1) +
+    theme_minimal() +
+    theme(aspect.ratio = 1)
+}
+resid_vs_fitted(bodyfat_lm)
 ```
 
-< your response here >
+This assumption is met. Based on all the plots, the data looks very linear.
 
 #### 19. (I) The residuals are independent (no diagnostic tools - just think about how the data was collected and briefly write your thoughts)
 
-< your response here >
+With the information we have, we have no reason to think that the data might be dependent in any way. This assumption is met.
 
 #### 20. (N) The residuals are normally distributed and centered at zero (use all four diagnostics)
 
 ```{r, fig.align='center'}
-# your code here
+# Boxplot
+make_boxplot <- function(model) {
+  residuals <- data.frame(residuals = resid(model))
+  ggplot(data = residuals, mapping = aes(y = residuals)) +
+  geom_boxplot() +
+  stat_summary(mapping = aes(x = 0),
+               fun = mean, geom = "point",
+               shape = 4, size = 2, color = "darkred") +
+  theme_classic() +
+  theme(aspect.ratio = 2,
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank()) +
+#  scale_y_continuous(limits = c(-20000, 30000), breaks = seq(-20000, 30000, 10000)) +
+  ylab("Residuals") +
+  xlab("")
+}
+make_boxplot(bodyfat_lm)
+
+# Histogram
+make_hist <- function(model) {
+  residuals <- data.frame(residuals = resid(model))
+  ggplot(data = residuals, mapping = aes(x = residuals)) +
+  geom_histogram(binwidth = sd(residuals$residuals / 4), mapping = aes(y = ..density..)) +
+  stat_function(fun = dnorm,
+                color = "blue",
+                args = list(mean = 0,
+                            sd = sd(residuals$residuals)),
+                size = 1.2) +
+  xlab("Residuals") +
+  ylab("Density") +
+  theme_light()
+}
+make_hist(bodyfat_lm)
+
+# Q-Q
+QQPlot <- function(model) {
+  autoplot(model, which = 2, ncol = 1) +
+    theme_bw() +
+    theme(aspect.ratio = 1)
+}
+QQPlot(bodyfat_lm)
+
+# Shapiro-Wilk
+shapiro.test(bodyfat_lm$residuals)
 ```
 
-< your response here >
+The boxplot and histogram look great. The Q-Q plot shows a little bit of deviation on the tails. The Shapiro-Wilks p-value is surprisingly small, but not quite significant at $\alpha=0.05$. Overall, the residuals look pretty normal. This assumption is met.
 
 #### 21. (E) The residuals have equal/constant variance across all values of X (use the one diagnostic tool)
 
 ```{r}
-# your code here
+resid_vs_fitted(bodyfat_lm)
 ```
 
-< your response here >
+The residuals vs fitted values plot looks great, with no clear trends. This assumption is met.
 
 #### 22. (A) The model describes all observations (i.e., there are no influential points) (use at least four diagnostic tools)
 
 ```{r, fig.align='center'}
-# your code here
+# Cook's Distance
+cooksd_plot <- function(model, nLabels = 3) {
+  cooks_d <- cooks.distance(model)
+  top_cd <- as.numeric(names(sort(cooks_d, decreasing = TRUE)[1:nLabels]))
+  
+  ggplot() +
+  geom_point(data = tibble(cooks_d),
+             mapping = aes(x = as.numeric(names(cooks_d)), 
+                           y = cooks_d)) +
+  geom_text(mapping = aes(x = top_cd,
+                          y = cooks_d[top_cd] + max(cooks_d) / 40,
+                          label = top_cd)) +
+  theme_bw() +
+  ylab("Cook's Distance") +
+  xlab("Observation Number") +
+  geom_hline(mapping = aes(yintercept = 4 / length(cooks_d)),
+             color = "red", linetype = "dashed") +
+  theme(aspect.ratio = 1)
+}
+cooksd_plot(bodyfat_lm)
+
+# DFBETAS
+dfb_col <- function(df_betas, predictor, nLabels = 3) {
+  # Find which observations have the highest dfbetas
+   top_vals <- df_betas[predictor] %>%
+    arrange(desc(abs(eval(parse(text = predictor))))) %>%
+    .[1:nLabels,] %>%
+    pull(predictor)
+  top_ind <- which(pull(df_betas, predictor) %in% top_vals)
+  
+  out <- ggplot() +
+    geom_point(data = df_betas,
+               mapping = aes(x = as.numeric(rownames(df_betas)),
+                             y = abs(pull(df_betas, predictor)))) +
+     geom_text(mapping = aes(x = top_ind,
+                             y = abs(pull(df_betas, predictor)[top_ind]) + 0.07,
+                             label = top_ind)) +
+    theme_bw() +
+    theme(aspect.ratio = 1) +
+    ylab("Abs of DFBETAS") +
+    xlab("Observation Number") +
+    ggtitle(predictor)
+  
+  if(length(dfbetas) <= 30) {
+    out <- out +
+      geom_hline(mapping = aes(yintercept = 1),
+                 color = "red", linetype = "dashed")
+  }else {
+    out <- out +
+      geom_hline(mapping = aes(yintercept = 2 / sqrt(length(dfbetas))),
+                 color = "red", linetype = "dashed")
+  }
+  return(out)
+}
+
+
+plot_dfbetas <- function(model, nLabels = 3) {
+  predictors <- attr(model$terms, "term.labels")
+  df_betas <- as_tibble(dfbetas(model)[, predictors])
+
+  plots <- lapply(predictors, dfb_col, df_betas = df_betas)
+  plots["ncol"] <- ceiling(sqrt(length(plots)))
+  do.call(grid.arrange, plots)
+}
+plot_dfbetas(bodyfat_lm)
+
+# DFFITS
+plot_dffits <- function(model, nLabels = 3) {
+  df_fits <- dffits(model)
+  top_dff <- as.numeric(names(sort(abs(df_fits), decreasing = TRUE)[1:nLabels]))
+  
+  df_fits_plot <- ggplot() + 
+    geom_point(data = tibble(df_fits),
+               mapping = aes(x = as.numeric(names(df_fits)), 
+                             y = abs(df_fits))) +
+    geom_text(mapping = aes(x = top_dff,
+                            y = abs(df_fits[top_dff]) + 0.05,
+                            label = top_dff)) +
+    theme_bw() +
+    ylab("Absolute Value of DFFITS for Y") +
+    xlab("Observation Number") +
+    theme(aspect.ratio = 1)
+  if(length(df_fits) <= 30) {
+    df_fits_plot +
+      geom_hline(mapping = aes(yintercept = 
+                                 2 * sqrt(length(model$coefficients) /
+                                                       length(df_fits))),
+                 color = "red", linetype = "dashed")
+  }else {
+    df_fits_plot +
+      geom_hline(mapping = aes(yintercept = 1),
+                 color = "red", linetype = "dashed")
+  }
+}
+plot_dffits(bodyfat_lm)
 ```
 
-< your response here >
+Referring back to the three plots for normality, none of those show any distinct outliers. Though cooks distance shows a number of points beyond the cut off, the points don't appear very distant from the rest of the data. The DFBETAS and DFFITS look great. There are no obvious influential points; this assumption is met.
 
 #### 23. (R) Additional predictor variables are not required (no diagnostic tools - just think about the variables you have and if there are other variables you think would help predict the response)
 
-< your response here >
+The original set of predictors seemed pretty comprehensive. In fact, we saw that we had more variables than necessary. I can't think of anything else that would help predict body fat. This assumption is met.
 
 #### 24. No multicollinearity  (use all three diagnostics)
 
 ```{r, fig.align='center'}
-# your code here
+# Variance Inflation Factors
+(vifs <- vif(bodyfat_lm))
+mean(vifs)
+
+# Correlation
+show_cor <- function(data) {
+  par(mfrow = c(1, 2))
+  corrplot(cor(data), method = "number", type = "upper", diag = F, tl.col = "#1f3366", cl.pos = "n")
+  title("Correlation Coefficients")
+  corrplot(cor(data), type = "upper", diag = F, tl.col = "#1f3366", cl.pos = "n")
+  title("Correlation Matrix")
+}
+show_cor(bodyfat_select)
+
+# Scatterplot matrix
+point_matrix(bodyfat_select)
 ```
 
-< your response here >
+Based on the scatterplots and the correlations coefficients, `neck` and `abdom` might cause problems, but the variance inflation factors are fine and the correlation coefficient isn't too bad. We do see that there is a problem when we notice that the coefficient for `neck` is negative when we would expect it to be positive. This assumtion is still not met.
 
 #### 25. Given the results from your model assumption checking, what would you do next to continue this analysis?
 
-< your response here >
+This models seems fairly good except the persistent multicollinearity issue. I would address that and then proceed with hypothesis tests and report confidence intervals.
 
 #### 26. Briefly summarize what you learned, personally, from this analysis about the statistics, model fitting process, etc.
 
-< your response here >
+Fro this assignment I took away a lot of understanding of the various variable selection models as well as ridge regression. I studied up on the algorithm of each method and the differences between them.
 
 #### 27. Briefly summarize what you learned from this analysis *to a non-statistician*. Write a few sentences about (1) the purpose of this data set and analysis and (2) what you learned about this data set from your analysis. Write your response as if you were addressing a business manager (avoid using statistics jargon) and just provide the main take-aways.
 
-< your response here >
+The purpose of this data was to determine an easier way of measuring body fat than submergence. In the last analysis we learned that we could possibly come up with such a method, but that we needed to choose the predictors of body fat more carefully. The purpose of this analysis was to make reasonable choices and come up with a concrete model. We discovered that we can predict body fat based on height, abdomen and neck measurements by the following equation $\text{Body Fat}=4.9-0.47\times\text{Height}-0.58\times\text{Neck}+0.75\times\text{Abdomen}$. Our model is obviously not fantastic because we would expect increased neck size to be a predictor of increased - not decreased - body fat. We would still have to adress some issues before using this model.
