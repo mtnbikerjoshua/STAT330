@@ -82,6 +82,7 @@ Shrinkage methods introduce a little bit of bias in order to greatly reduce vari
 
 All three methods shrink coefficients, but ridge regression is not a variable selection method and therefore falls in a slightly different category than the other two. Each method applies a penalty to the normal OLS cost function for larger betas, then minimizes that cost function. In the case of LASSO and Elastic Net, some coefficients shrink to 0 leaving behind only the most useful variables. Elastic Net is quite similar to LASSO but overcomes some of it's limitations. Specifically, Elastic Net will sometimes select variables that are highly correlated leading to better predictions but potential problems with multicollinearity.
 
+
 #### 8. Remember, when coding these methods, the response variable must be the last column in the data set for the `bestglm` function to work. Switch the order of the columns in the data set so that brozek is last.
 
 ```{r, fig.align='center'}
