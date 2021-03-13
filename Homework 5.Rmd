@@ -41,7 +41,7 @@ The data can be found in the BodyFat data set on Canvas. Download BodyFat.txt, a
 
 ```{r}
 bodyfat_orig <- read.csv("bodyfat.txt", sep = " ", row.names = 1)
-(bodyfat_orig <- tibble(bodyfat))
+(bodyfat_orig <- tibble(bodyfat_orig))
 summary(bodyfat_orig)
 ```
 
@@ -144,7 +144,7 @@ bodyfat_response <- bodyfat %>%
 lasso <- cv.glmnet(x = bodyfat_predictors, y = bodyfat_response,
                            type.measure = "mse", alpha = 1)
 # Plot log(lambda) against MSE
-autoplot(bodyfat_lasso, label = FALSE) +
+autoplot(lasso, label = FALSE) +
   theme_bw() +
   theme(aspect.ratio = 1)
 # Pick the lambda value within 1 SE of the minimum MSE
