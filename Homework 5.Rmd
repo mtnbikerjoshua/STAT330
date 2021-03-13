@@ -76,11 +76,11 @@ The best subset is the most thorough and preferable method. It compares all poss
 
 #### 6. Briefly explain how shrinkage methods work (variance-bias tradeoff). Specifically, how can some of these methods be considered variable selection procedures?
 
-< your response here >
+Shrinkage methods introduce a little bit of bias in order to greatly reduce variance. Sometimes we are willing to make that trade off in order to get significant results.
 
 #### 7. Briefly explain the similarities/difference between ridge regression, LASSO, and elastic net.
 
-< your response here >
+All three methods shrink coefficients 
 
 #### 8. Remember, when coding these methods, the response variable must be the last column in the data set for the `bestglm` function to work. Switch the order of the columns in the data set so that brozek is last.
 
