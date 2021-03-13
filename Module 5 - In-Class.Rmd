@@ -66,12 +66,7 @@ head(env)
 Hint: use the `plot` (or `pairs`) and `cor` functions.
 
 ```{r, fig.align='center'}
-plot(env) # Too small of plots
-plot(env[, c(16,1,2,3,9,12:15)], pch = 19, cex = .5)
-
-round(cor(env), 2) #verging on useless...
-corrplot(cor(env), type = "upper") #May want to condense the information
-
+# your code here
 ```
 
 ## Fit a multiple linear regression model using all variables in the data set. Look at a summary of the results.
@@ -79,10 +74,7 @@ corrplot(cor(env), type = "upper") #May want to condense the information
 Hint: use the `lm` function with your formula looking something like `y ~ .`, where the `.` includes all variables (excluding y) in the data set as predictors.
 
 ```{r, fig.align='center'}
-env_lm <- lm(AAMort ~ ., data = env)
-
-summary(env_lm)
-
+# your code here
 ```
 
 ## Normally at this step, you would check the model assumptions. For now, skip checking assumptions 1-6 (you can always go back and do this later) and use variance inflation factors to test for multicollinearity. Do you think multicollinearity is a problem for this model?
@@ -90,10 +82,7 @@ summary(env_lm)
 Hint: use the function `vif`.
 
 ```{r, fig.align='center'}
-env_vif <- vif(env_lm)
-
-max(env_vif) # Way above 10
-mean(env_vif) # Way above 1
+# your code here
 ```
 
 < your response here >
@@ -110,15 +99,11 @@ We will use the `bestglm` package/function (you could also use the `regsubsets` 
 You can see which variables were included in the top 5 (or whatever number you set for the `TopModels` argument, defaults to 5) best models using `best_subsets_bic$BestModels`. You can also see the model summary output for the single best model using `summary(best_subsets_bic$BestModel)`. You could save `best_subsets_bic$BestModel` as a variable for later use (i.e. when checking assumptions).
 
 ```{r, fig.align='center'}
-best_subsets_bic <- bestglm(env, 
-                            IC = "BIC",
-                            method = "exhaustive")
-
-#to view the top ten models
-best_subsets_bic$BestModels #shows which variables were or were not included
-
-# summary of the best model
-summary(best_subsets_bic$BestModel)
+# your code here
+bestglm(env,
+        IC = "CV",
+        method = "seqrep",
+        )
 ```
 
 < your response here >
@@ -130,16 +115,7 @@ summary(best_subsets_bic$BestModel)
 Hint: Similar code as above - just make a few changes (you will change the `IC` argument and the `method` argument.).
 
 ```{r, fig.align='center'}
-forward_aic <- bestglm(env, 
-                      IC = "AIC",
-                      method = "forward")
-
-#to view the top ten models
-forward_aic$BestModels #shows which variables were or were not included
-
-# summary of the best model
-summary(forward_aic$BestModel)
-
+# your code here
 ```
 
 < your response here >
@@ -151,13 +127,7 @@ summary(forward_aic$BestModel)
 Hint: Similar code as above - just make a few changes. You will change the `IC` argument and the `method` argument. Specifically, the `IC` argument should be set to `"CV"` - this is what specifies the PMSE criteria. Note that for the `"CV"` method, the function will run `t` cross-validations to see which is the best model. Note that `$BestModels` does not work when applying cross-validation.
 
 ```{r, fig.align='center'}
-backward_cv <- bestglm(env, 
-                      IC = "CV",
-                      method = "backward",
-                      t=100) # this takes into account computation speed
-
-# summary of the best model
-summary(backward_cv$BestModel)
+# your code here
 ```
 
 < your response here >
@@ -169,13 +139,7 @@ summary(backward_cv$BestModel)
 Hint: Similar code as above - just make a few changes (`method="seqrep"`).
 
 ```{r, fig.align='center'}
-seqrep_cv <- bestglm(env, 
-                      IC = "CV",
-                      method = "seqrep",
-                      t=100) # this takes into account computation speed
-
-# summary of the best model
-summary(seqrep_cv$BestModel)
+# your code here
 ```
 
 < your response here >
@@ -222,14 +186,13 @@ coef(env_ridge_cv, s = "lambda.1se")
 Hint: same code as above, except you need to set `alpha = 1` instead of `alpha = 0`.
 
 ```{r, fig.align='center'}
-# use cross validation to pick the "best" (based on MSE) lambda
+env_x <- as.matrix(env[, 1:15])
+env_y <- env[, 16]
+
 env_lasso_cv <- cv.glmnet(x = env_x,
                           y = env_y, 
                           type.measure = "mse", 
-                          alpha = 1)  # 1 is code for "lasso"
-
-
-# plot (log) lambda vs MSE
+                          alpha = 1)
 autoplot(env_lasso_cv, label = FALSE) +
   theme_bw() +
   theme(aspect.ratio = 1)
@@ -251,58 +214,24 @@ coef(env_lasso_cv, s = "lambda.1se")
 Hint: same code as above, except you need to set `alpha = 0.5`.
 
 ```{r, fig.align='center'}
-
-# use cross validation to pick the "best" (based on MSE) lambda
-env_elastic_net_cv <- cv.glmnet(x = env_x,
-                          y = env_y, 
-                          type.measure = "mse", 
-                          alpha = 0.5)  # 0.5 is code for "elastic"
-
-
-# plot (log) lambda vs MSE
-autoplot(env_elastic_net_cv, label = FALSE) +
-  theme_bw() +
-  theme(aspect.ratio = 1)
-
-# lambda.min: value of lambda that gives minimum mean cross-validated error
-env_elastic_net_cv$lambda.min
-# lambda.1se: value of lambda within 1 standard error of the minimum 
-# cross-validated error
-env_elastic_net_cv$lambda.1se
-
-coef(env_elastic_cv, s = "lambda.min")
-coef(env_elastic_cv, s = "lambda.1se")
-
+alpha = 0.5
 ```
+
+
+
+
 
 
 ### Now that you have seen the various results from the different methods, pick a subset of variables that you will include in the model. Create the multiple linear regression model with these variables (alternatively, you can call the best model using $BestModel, as explained above).
 
 ```{r, fig.align='center'}
-#Ex. Best subsets
-env_lm_subset1 <- best_subsets_bic$BestModel
-summary(env_lm_subset1)
-
-#Ex. Pick and choose 
-env_lm_subset2 <- lm(AAMort ~ AnnPrecip + School + PctNonWhite + log.SO2, data = env)
-
-summary(env_lm_subset2)
-
-
+# your code here
 ```
 
 ### Once you have chosen a model, you should check the model assumptions. For now, skip checking assumptions 1-6 (you can always go back and do this later) and use variance inflation factors to test for multicollinearity. Do you think multicollinearity is a problem for this model?
 
 ```{r, fig.align='center'}
-#use the subsets from above
-env_vif_subset1 <- vif(env_lm_subset1)
-env_vif_subset1
-
-max(env_vif_subset1) # 2.1, much better than before
-mean(env_vif_subset1) # Just barely above 1, at 1.6
-
-
-
+# your code here
 ```
 
 < your response here >
