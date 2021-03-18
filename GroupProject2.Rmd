@@ -7,37 +7,58 @@ output: html_document
 
 <style type="text/css">
 h1.title {
-  font-size: 40px;
-  text-align: center;
-  color: #454545
+font-size: 40px;
+text-align: center;
 }
-.subtitle {
-  margin-top: 6px;
-  margin-bottom: 15px;
-  color: #878787
+h4.author 
+font-size: 40px;
+text-align: center;
 }
 </style>
 
 ```{r setup, include=FALSE}
+# load packages here
+library(corrplot)
 library(tidyverse)
-library(ggfortify)  # Plot lm objects using ggplot instead of base R
-library(car)  # For added-variable plots, dfbetas and dffits
-library(corrplot)  # For colored correlation matrix
-library(gridExtra)  # For putting multiple ggplots in one plot
+library(ggfortify)
+library(car)
+library(bestglm)
+library(glmnet)
+set.seed(12345)
 ```
 
-# Background and Introduction
+### Background and Introduction
+
 The World Health Organization (WHO) and United Nations (UN) were interested in factors affecting life expectancy in countries around the world. In 2015 they collected demographic and immunization data from 130 countries.\
 
 The purpose of this analysis is to find which factors are correlated with life expectancy and their relationship. We expect to find that having a greater proportion of the population immunized will lead to increased life expectency and that greater schooling will also be associated with greater life expectancy, although especially in that case we do not believe there is necessarily a causal relationship.\
 
-To analyze these hypotheses, we will permorm linear regression using `life.expectancy` as our response variable. We will check the assumptions of linear regression and remove or transform variables as necessary. If two or more of the variables are highly correlated, we will use several variable selction and shrinkage methods to choose the most appropriate subset. If transformations are necessary, we will use the Box-Cox method and plots of different transformations to help us determine the best one. After performing regression, we will examine the model and the hypothesis tests to see which variables are significant and how they affect life expectancy. Finally, we will provide our results along with confidence intervals.
+To analyze these hypotheses, we will perform linear regression using `life.expectancy` as our response variable. We will check the assumptions of linear regression and remove or transform variables as necessary. If two or more of the variables are highly correlated, we will use several variable selection and shrinkage methods to choose the most appropriate subset. If transformations are necessary, we will use the Box-Cox method and plots of different transformations to help us determine the best one. After performing regression, we will examine the model and the hypothesis tests to see which variables are significant and how they affect life expectancy. Finally, we will provide our results along with confidence intervals.
 
-# Methods and Results
+### Methods and Results
 
-## Exloratory Data Analysis
-```{r, message = FALSE, fig.height = 10, fig.width = 10}
-# Read in the data
+The data set we will be using contains measurements, collected in 2015, of 130 different countries. This was collected by the World Health Organization and the United Nations. The data set contains measurements for both developed and developing countries.
+
+The following table displays the variable names in this data set, along with their descriptions.
+
+Variable       | Description
+-------------- | -------------
+Status         | Country Status (Developed or Developing)
+Life.expectancy| Average life expectancy in years
+Adult.Mortality| Probability of dying between 15 and 60 years per 1000 population
+Hepatitis.B    | Immunization coverage among 1-year-olds (%)
+Measles        | Number of reported cases er 1000 population
+BMI            | Average Body Mass Index of entire population
+Polio          | Immunization coverage among 1-year-olds (%)
+Diphtheria     | Immunization coverage among 1-year-olds (%)
+GDP            | Gross Domestic Product per Capita (In USD)
+Population     | Population of the country
+Schooling      | Average number of years of schooling
+
+
+We start by applying basic summary and exploratory statistics to this data to better understand the data and identify trends.
+
+```{r}
 life_expect <- read_csv("lifeexpect.csv") %>%
   # Change Status into a numeric variable where 1 means
   #   developed and 0 means developing
@@ -46,19 +67,213 @@ life_expect <- read_csv("lifeexpect.csv") %>%
          Life.Expectancy = Life.expectancy) %>%
   # Remove un-needed columns
   select(Life.Expectancy, Adult.Mortality, Hepatitis.B, Measles, BMI, Polio,
-         Diphtheria, GDP, Population, Schooling, Developed)
+         Diphtheria, GDP, Population, Schooling, Developed) %>% 
+  filter(Diphtheria < 100)
 
-# Head and summary of the data
+# create data set only with continuous variable
+life_expect_cont <- life_expect %>% select(Life.Expectancy : Schooling)
+
+### scatterplot matrix (only with continuous)
+point_matrix(life_expect_cont)
+
+### correlation matrix (only used for continuous variables)
+cor(life_expect_cont)
+                
 life_expect
 summary(life_expect)
-
 # Function to create scatterplot matrix of `data`
 point_matrix <- function(data) {
   par(pty = "s", las = 1)
-  pairs(data, pch = 19, lower.panel = NULL)
+  pairs(data, pch = ".", lower.panel = NULL)
 }
 
-# Scatterplot
-point_matrix(life_expect)
+# exploratory data analysis
+cor(life_expect)
+pairs(life_expect, pch=5)
+life_expect$Life.Expectancy
+life_expect$Adult.Mortality <- as.numeric(life_expect$Adult.Mortality)
+life_expect$Hepatitis.B <- as.numeric(life_expect$Hepatitis.B)
+life_expect$Measles <- as.numeric(life_expect$Measles)
+life_expect$BMI <- as.numeric(life_expect$BMI)
+life_expect$Polio <- as.numeric(life_expect$Polio)
+life_expect$Diphtheria <- as.numeric(life_expect$Diphtheria)
+life_expect$GDP <- as.numeric(life_expect$GDP)
+life_expect$Population <- as.numeric(life_expect$Population)
+life_expect$Schooling <- as.numeric(life_expect$Schooling)
+
+
+#### Histogram
+histLifeExpect <- function(variable, name, width) {
+  ggplot(data = life_expect, mapping = aes(x = variable, y = Life.Expectancy)) + 
+  # when using this code for future data sets, make sure to change the binwidth: 
+  geom_histogram(mapping = aes(y = ..density..), binwidth = width) +
+  xlab(name) +
+  theme(aspect.ratio = 1)
+}
+histLifeExpect(life_expect$Adult.Mortality, "Adult.Mortality", 10)
+histLifeExpect(life_expect$Hepatitis.B, "Hepatitis.B", 1)
+histLifeExpect(life_expect$Measles, "Measles", 2)
+histLifeExpect(life_expect$BMI, "BMI", 5)
+histLifeExpect(life_expect$Polio, "Polio", 10)
+histLifeExpect(life_expect$Diphtheria, "Diphtheria", 7)
+histLifeExpect(life_expect$GDP, "GDP", 2)
+histLifeExpect(life_expect$Population, "Population", 10000000)
+histLifeExpect(life_expect$Schooling, "Schooling", 2)
+
+### scatter plot 
+scatterLifeExpect <- function(variable) {
+  ggplot(data = life_expect, mapping = aes(x = variable,  y = Life.Expectancy)) +
+  # when using this code for future data sets, make sure to change the binwidth:
+  geom_point() + theme_bw() +
+  theme(aspect.ratio = 1)
+}
+scatterLifeExpect(life_expect$Adult.Mortality)
+scatterLifeExpect(life_expect$Hepatitis.B)
+scatterLifeExpect(life_expect$Measles)
+scatterLifeExpect(life_expect$BMI)
+scatterLifeExpect(life_expect$Polio)
+scatterLifeExpect(life_expect$Diphtheria)
+scatterLifeExpect(life_expect$GDP)
+scatterLifeExpect(life_expect$Population)
+scatterLifeExpect(life_expect$Schooling)
+
+
+### Box Plot (for categorical: developed)
+# turn categorical variable to factor
+life_expect$Developed <- as.factor(life_expect$Developed)
+
+ggplot(data = life_expect, mapping = aes(x = Developed, y = Life.Expectancy)) +
+  geom_boxplot() +
+  theme_bw() +
+  theme(aspect.ratio = 1)
+
+
+### Interaction plot
+
+
+# ggplot(data = life_expect, mapping = aes(x = Hepatitis.B,  y = Life.Expectancy)) +
+#   # when using this code for future data sets, make sure to change the binwidth:
+#   geom_point() + theme_bw() +
+#   theme(aspect.ratio = 1)
+# ggplot(data = life_expect, mapping = aes(x = Measles)) + 
+#   # when using this code for future data sets, make sure to change the binwidth: 
+#   geom_histogram(mapping = aes(y = ..density..), binwidth = 2) +
+#   theme(aspect.ratio = 1)
+# ggplot(data = life_expect, mapping = aes(x = BMI)) + 
+#   # when using this code for future data sets, make sure to change the binwidth: 
+#   geom_histogram(mapping = aes(y = ..density..), binwidth = 5) +
+#   theme(aspect.ratio = 1)
+# ggplot(data = life_expect, mapping = aes(x = Polio)) + 
+#   # when using this code for future data sets, make sure to change the binwidth: 
+#   geom_histogram(mapping = aes(y = ..density..), binwidth = 10) +
+#   theme(aspect.ratio = 1)
+# ggplot(data = life_expect, mapping = aes(x = Diphtheria)) + 
+#   # when using this code for future data sets, make sure to change the binwidth: 
+#   geom_histogram(mapping = aes(y = ..density..), binwidth = 7) +
+#   theme(aspect.ratio = 1)
+# ggplot(data = life_expect, mapping = aes(x = GDP)) + 
+#   # when using this code for future data sets, make sure to change the binwidth: 
+#   geom_histogram(mapping = aes(y = ..density..), binwidth = 2) +
+#   theme(aspect.ratio = 1)
+# ggplot(data = life_expect, mapping = aes(x = Population)) +
+#   # when using this code for future data sets, make sure to change the binwidth:
+#   geom_histogram(mapping = aes(y = ..density..), binwidth = 10000) +
+#   theme(aspect.ratio = 1)
+# ggplot(data = life_expect, mapping = aes(x = Schooling)) + 
+#   # when using this code for future data sets, make sure to change the binwidth: 
+#   geom_histogram(mapping = aes(y = ..density..), binwidth = 2) +
+#   theme(aspect.ratio = 1)
+# <...more code here...
+# include things like: correlation matrix, scatterplot matrix, boxplots of
+# categorical variables, histograms of continuous variables, color-coded
+# scatterplots, interaction plots (if appropriate), etc.
 ```
 
+
+
+$\text{AAMort}_i = \beta_0...$
+
+
+##### Variable Selection
+
+We will start by doing variable selection to find the simplest model possible. We also think multicollinearity will be an issue with the three pollution variables, so variable selection will help reduce this problem.
+
+```{r, fig.align='center'}
+# <... code here with different variable selection procedures...>
+```
+Variable            | Best Subset | Backward | Sequential Replacement | LASSO  | Elastic Net
+--------------------| ----------- | -------- | ---------------------- | ------ | -----------
+                    |             |          |                        |        |      
+
+
+...Given the results from all of the variable selection procedures, shown in the table above, we choose to keep 
+
+##### Initial Linear Model
+
+```{r, fig.align='center'}
+# <...code to fit linear model with selected variables and code to check ALL
+# assumptions...>
+```
+
+After fitting the linear regression model and checking the assumptions, we notice several assumptions may not be met. Specifically...
+
+##### Trying Several Linear Models
+
+Since homoscedasticity was likely not met, we apply a Box-Cox transform to help us determine which transformation to use when transforming Y.
+
+```{r, fig.align='center'}
+# <...code for boxCox, new linear model, and assumption checking, etc...>
+```
+
+The Box-Cox transform suggested....and this helped with the homoscedasticity assumption. We also realized that we should transform the School variable to better satisfy the linearity assumption. Next, we saw that...
+
+We decided to try including an interaction between ... and ... in our model since the results from our EDA suggested there might be a significant interaction between those two variables. 
+
+```{r, fig.align='center'}
+# <...code for interactions...>
+```
+
+We found that the interaction is significant after performing an ANOVA to compare the two models: one with the interaction, one without. We will now do one final check of the assumptions to make sure this model is appropriate to describe the data. 
+
+##### Final Linear Model
+
+```{r, fig.align='center'}
+# <...code for linear model, assumption checking, etc...>
+```
+
+Our final model seems to meet all of the assumptions of linear regression. Specifically, the variance inflation factors are all under ten, and the residuals appear homoscedastic, as shown in the residuals versus fitted values plot. The assumption of... 
+
+Our final fitted model is: 
+
+$\log(\widehat{\text{AAMort}}_i) = \beta_0...$
+
+##### Model Assessment
+
+ 
+
+```{r, fig.align='center'}
+# <... code here...>
+# Include things like: slopes, hypothesis tests, confidence intervals, 
+# prediction intervals, etc.
+# If you have an interaction, code to compute the effect of one of the 
+# interaction variables on the response, etc.
+```
+
+The confidence intervals for the variables are very informative. For example, we are 95% confident that... That is a fairly large range, and suggests increasing education opportunities in communities could significantly lower mortality. Another variable we found interesting was...
+
+We also were able to make intervals for a new city like Provo. We found that...
+
+< Include LOTS of interpretations here. Be especially cautious of your interpretations if you have interactions >
+
+We are also interested in how well the model fits the data. To do this, we look at metrics such as $R^2$, the RMSE, and.... These metrics are important to check and understand because...
+
+```{r, fig.align='center'}
+# <...more code here...>
+# Include things like: R2, RMSE, MAE, etc.
+```
+
+It turns out that the model fits the data pretty well. An $R^2$ of 74% is rather high, and indicates that...
+
+### Summary and Conclusions
+
+Understanding how environmental and socioeconomic characteristics contribute to the mortality rate can be critical to increasing overall human health and lifespan. We conducted an analysis to determine which of these types of variable significantly affect mortality, with a specific interest in air quality/pollution. After fitting a multiple linear regression model, we found that air quality, does, indeed, have a significant negative impact on mortality. We also found that the amount of education the population has decreases mortality. Additionally,...
