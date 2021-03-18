@@ -24,7 +24,8 @@ library(ggfortify)
 library(car)
 library(bestglm)
 library(glmnet)
-set.seed(12345)
+library(jcreg)
+set.seed(38953)
 ```
 
 ### Background and Introduction
@@ -62,7 +63,7 @@ We start by applying basic summary and exploratory statistics to this data to be
 life_expect <- read_csv("lifeexpect.csv") %>%
   # Change Status into a numeric variable where 1 means
   #   developed and 0 means developing
-  mutate(Developed = ifelse(Status == "Developed", 1, 0),
+  mutate(Developed = factor(Status),
          # Fix capitalization on Life.expectancy
          Life.Expectancy = Life.expectancy) %>%
   # Remove un-needed columns
@@ -70,36 +71,23 @@ life_expect <- read_csv("lifeexpect.csv") %>%
          Diphtheria, GDP, Population, Schooling, Developed) %>% 
   filter(Diphtheria < 100)
 
-# create data set only with continuous variable
+# create data set only with continuous variables
 life_expect_cont <- life_expect %>% select(Life.Expectancy : Schooling)
+
+# Function to create scatterplot matrix of `data`
+point_matrix <- function(data) {
+  par(pty = "s", las = 1)
+  pairs(data, pch = 20, lower.panel = NULL)
+}
 
 ### scatterplot matrix (only with continuous)
 point_matrix(life_expect_cont)
 
-### correlation matrix (only used for continuous variables)
-cor(life_expect_cont)
+# Correlation matrix
+cor_graphic(life_expect_cont)
                 
 life_expect
 summary(life_expect)
-# Function to create scatterplot matrix of `data`
-point_matrix <- function(data) {
-  par(pty = "s", las = 1)
-  pairs(data, pch = ".", lower.panel = NULL)
-}
-
-# exploratory data analysis
-cor(life_expect)
-pairs(life_expect, pch=5)
-life_expect$Life.Expectancy
-life_expect$Adult.Mortality <- as.numeric(life_expect$Adult.Mortality)
-life_expect$Hepatitis.B <- as.numeric(life_expect$Hepatitis.B)
-life_expect$Measles <- as.numeric(life_expect$Measles)
-life_expect$BMI <- as.numeric(life_expect$BMI)
-life_expect$Polio <- as.numeric(life_expect$Polio)
-life_expect$Diphtheria <- as.numeric(life_expect$Diphtheria)
-life_expect$GDP <- as.numeric(life_expect$GDP)
-life_expect$Population <- as.numeric(life_expect$Population)
-life_expect$Schooling <- as.numeric(life_expect$Schooling)
 
 
 #### Histogram
@@ -120,23 +108,6 @@ histLifeExpect(life_expect$GDP, "GDP", 2)
 histLifeExpect(life_expect$Population, "Population", 10000000)
 histLifeExpect(life_expect$Schooling, "Schooling", 2)
 
-### scatter plot 
-scatterLifeExpect <- function(variable) {
-  ggplot(data = life_expect, mapping = aes(x = variable,  y = Life.Expectancy)) +
-  # when using this code for future data sets, make sure to change the binwidth:
-  geom_point() + theme_bw() +
-  theme(aspect.ratio = 1)
-}
-scatterLifeExpect(life_expect$Adult.Mortality)
-scatterLifeExpect(life_expect$Hepatitis.B)
-scatterLifeExpect(life_expect$Measles)
-scatterLifeExpect(life_expect$BMI)
-scatterLifeExpect(life_expect$Polio)
-scatterLifeExpect(life_expect$Diphtheria)
-scatterLifeExpect(life_expect$GDP)
-scatterLifeExpect(life_expect$Population)
-scatterLifeExpect(life_expect$Schooling)
-
 
 ### Box Plot (for categorical: developed)
 # turn categorical variable to factor
@@ -151,43 +122,44 @@ ggplot(data = life_expect, mapping = aes(x = Developed, y = Life.Expectancy)) +
 ### Interaction plot
 
 
-# ggplot(data = life_expect, mapping = aes(x = Hepatitis.B,  y = Life.Expectancy)) +
-#   # when using this code for future data sets, make sure to change the binwidth:
-#   geom_point() + theme_bw() +
-#   theme(aspect.ratio = 1)
-# ggplot(data = life_expect, mapping = aes(x = Measles)) + 
-#   # when using this code for future data sets, make sure to change the binwidth: 
-#   geom_histogram(mapping = aes(y = ..density..), binwidth = 2) +
-#   theme(aspect.ratio = 1)
-# ggplot(data = life_expect, mapping = aes(x = BMI)) + 
-#   # when using this code for future data sets, make sure to change the binwidth: 
-#   geom_histogram(mapping = aes(y = ..density..), binwidth = 5) +
-#   theme(aspect.ratio = 1)
-# ggplot(data = life_expect, mapping = aes(x = Polio)) + 
-#   # when using this code for future data sets, make sure to change the binwidth: 
-#   geom_histogram(mapping = aes(y = ..density..), binwidth = 10) +
-#   theme(aspect.ratio = 1)
-# ggplot(data = life_expect, mapping = aes(x = Diphtheria)) + 
-#   # when using this code for future data sets, make sure to change the binwidth: 
-#   geom_histogram(mapping = aes(y = ..density..), binwidth = 7) +
-#   theme(aspect.ratio = 1)
-# ggplot(data = life_expect, mapping = aes(x = GDP)) + 
-#   # when using this code for future data sets, make sure to change the binwidth: 
-#   geom_histogram(mapping = aes(y = ..density..), binwidth = 2) +
-#   theme(aspect.ratio = 1)
-# ggplot(data = life_expect, mapping = aes(x = Population)) +
-#   # when using this code for future data sets, make sure to change the binwidth:
-#   geom_histogram(mapping = aes(y = ..density..), binwidth = 10000) +
-#   theme(aspect.ratio = 1)
-# ggplot(data = life_expect, mapping = aes(x = Schooling)) + 
-#   # when using this code for future data sets, make sure to change the binwidth: 
-#   geom_histogram(mapping = aes(y = ..density..), binwidth = 2) +
-#   theme(aspect.ratio = 1)
-# <...more code here...
-# include things like: correlation matrix, scatterplot matrix, boxplots of
-# categorical variables, histograms of continuous variables, color-coded
-# scatterplots, interaction plots (if appropriate), etc.
+
 ```
+```{r, message=FALSE}
+life_expect <- read_csv("lifeexpect.csv") %>%
+  # Change Status into a numeric variable where 1 means
+  #   developed and 0 means developing
+  mutate(Status = factor(Status),
+         # Fix capitalization on Life.expectancy
+         Life.Expectancy = Life.expectancy) %>%
+  # Remove un-needed columns
+  select(Life.Expectancy, Adult.Mortality, Hepatitis.B, Measles, BMI, Polio,
+         Diphtheria, GDP, Population, Schooling, Status) %>% 
+  filter(Diphtheria < 100)
+life_expect
+summary(life_expect)
+
+# Create data set only with continuous variables
+life_expect_cont <- life_expect %>% select(Life.Expectancy : Schooling)
+
+# Scatterplot matrix (only with continuous)
+point_matrix(life_expect_cont)
+
+# Correlation matrix
+cor_graphic(life_expect_cont)
+
+# Boxplot for categorical variable
+ggplot(data = life_expect, mapping = aes(x = Status, y = Life.Expectancy)) +
+  geom_boxplot() +
+  theme_bw() +
+  theme(aspect.ratio = 1) +
+  xlab("Status") +
+  ylab("Life Expectancy")
+
+# Run initial model
+init_model <- lm(Life.Expectancy ~ ., data = life_expect)
+summary(init_model)
+```
+
 
 
 
