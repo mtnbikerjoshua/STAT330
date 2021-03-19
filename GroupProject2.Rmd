@@ -48,7 +48,7 @@ Status         | Country Status (Developed or Developing)
 Life.expectancy| Average life expectancy in years
 Adult.Mortality| Probability of dying between 15 and 60 years per 1000 population
 Hepatitis.B    | Immunization coverage among 1-year-olds (%)
-Measles        | Number of reported cases er 1000 population
+Measles        | Number of reported cases per 1000 population
 BMI            | Average Body Mass Index of entire population
 Polio          | Immunization coverage among 1-year-olds (%)
 Diphtheria     | Immunization coverage among 1-year-olds (%)
@@ -69,7 +69,7 @@ life_expect <- read_csv("lifeexpect.csv") %>%
   # Remove un-needed columns
   select(Life.Expectancy, Adult.Mortality, Hepatitis.B, Measles, BMI, Polio,
          Diphtheria, GDP, Population, Schooling, Developed) %>% 
-  filter(Diphtheria < 100)
+  filter(Diphtheria < 100, Measles < )
 
 # create data set only with continuous variables
 life_expect_cont <- life_expect %>% select(Life.Expectancy : Schooling)
@@ -124,41 +124,7 @@ ggplot(data = life_expect, mapping = aes(x = Developed, y = Life.Expectancy)) +
 
 
 ```
-```{r, message=FALSE}
-life_expect <- read_csv("lifeexpect.csv") %>%
-  # Change Status into a numeric variable where 1 means
-  #   developed and 0 means developing
-  mutate(Status = factor(Status),
-         # Fix capitalization on Life.expectancy
-         Life.Expectancy = Life.expectancy) %>%
-  # Remove un-needed columns
-  select(Life.Expectancy, Adult.Mortality, Hepatitis.B, Measles, BMI, Polio,
-         Diphtheria, GDP, Population, Schooling, Status) %>% 
-  filter(Diphtheria < 100)
-life_expect
-summary(life_expect)
 
-# Create data set only with continuous variables
-life_expect_cont <- life_expect %>% select(Life.Expectancy : Schooling)
-
-# Scatterplot matrix (only with continuous)
-point_matrix(life_expect_cont)
-
-# Correlation matrix
-cor_graphic(life_expect_cont)
-
-# Boxplot for categorical variable
-ggplot(data = life_expect, mapping = aes(x = Status, y = Life.Expectancy)) +
-  geom_boxplot() +
-  theme_bw() +
-  theme(aspect.ratio = 1) +
-  xlab("Status") +
-  ylab("Life Expectancy")
-
-# Run initial model
-init_model <- lm(Life.Expectancy ~ ., data = life_expect)
-summary(init_model)
-```
 
 
 
