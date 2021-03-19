@@ -58,7 +58,7 @@ Schooling      | Average number of years of schooling
 
 We start by applying basic summary and exploratory statistics to this data to better understand the data and identify trends.
 
-```{r}
+```{r, message=FALSE}
 life_expect <- read_csv("lifeexpect.csv") %>%
   # Change Status into a numeric variable where 1 means
   #   developed and 0 means developing
@@ -71,7 +71,8 @@ life_expect <- read_csv("lifeexpect.csv") %>%
   filter(Diphtheria < 100)
 life_expect
 summary(life_expect)
-
+```
+```{r, fig.width=8, fig.height=8}
 # create data set only with continuous variable
 life_expect_cont <- life_expect %>% select(-Status)
 
@@ -82,13 +83,12 @@ point_matrix <- function(data) {
 }
 ### scatterplot matrix (only with continuous)
 point_matrix(life_expect_cont)
-
+```
+```{r, results=FALSE, message=FALSE}
 ### correlation matrix (only used for continuous variables)
-cor(life_expect_cont)
+round(cor(life_expect_cont), 2)
 corrplot(cor(life_expect_cont), type = "upper", diag = F,
          tl.col = "#1f3366", cl.pos = "n")
-
-
 #### Histogram
 histLifeExpect <- function(variable, name, width) {
   ggplot(data = life_expect, mapping = aes(x = variable, y = Life.Expectancy)) + 
@@ -130,6 +130,34 @@ ggplot(data = life_expect, mapping = aes(x = Status, y = Life.Expectancy)) +
 
 Next, we will run an initial linear model and take a look at the residuals to see what transformations might need to be done. We will also refer back to the scatterplots above.
 ```{r}
+# Useful functions for later
+resid_vs_fitted <- function(model) {
+  autoplot(model, which = 1, ncol = 1) +
+    theme_minimal() +
+    theme(aspect.ratio = 1)
+}
+jcreg_qq <- function(model) {
+  autoplot(model, which = 2, ncol = 1) +
+    theme_bw() +
+    theme(aspect.ratio = 1)
+}
+jcreg_hist <- function(model) {
+  residuals <- data.frame(residuals = resid(model))
+  ggplot(data = residuals, mapping = aes(x = residuals)) +
+    geom_histogram(binwidth = sd(residuals$residuals / 4),
+                   mapping = aes(y = ..density..)) +
+    stat_function(fun = dnorm,
+                  color = "blue",
+                  args = list(mean = 0,
+                              sd = sd(residuals$residuals)),
+                  size = 1.2) +
+    xlab("Residuals") +
+    ylab("Density") +
+    theme_light()
+}
+```
+
+```{r, warning=FALSE}
 init_model <- lm(Life.Expectancy ~ ., data = life_expect)
 resid_vs_fitted(init_model)
 jcreg_hist(init_model)
@@ -139,7 +167,7 @@ shapiro.test(init_model$residuals)
 
 The residuals are fairly normal, with some outliers at the lower tail. There does appear to be a slight cone shape to the residuals, which could be a problem. Based on these graphs we will attempt a transformation on the response.
 
-```{r}
+```{r, message=FALSE, fig.height=4}
 # Apply boxCox to give us a starting point
 boxCox(init_model)
 
@@ -200,7 +228,7 @@ shapiro.test(model_4$residuals)
 Based on the transformations attempted, the best one appears to be a cubic transformation. The cubic transformation sees great improvement in homoscedasticity and some improvement in normality. We will complete the rest of the analysis on a cubic scale.
 
 We will also check the need for transformations of the predictor variables.
-```{r}
+```{r, message=FALSE, results=FALSE}
 life_expect_cu_cont <- life_expect_cu %>%
   select(-Status)
 map(2:length(life_expect_cu_cont), scatter,
@@ -209,7 +237,7 @@ map(2:length(life_expect_cu_cont), scatter,
 
 Hepatitis B, Polio, GDP, and Population appear to have no trend whatsoever, therefore there is no transformation we can apply to make them linear. BMI, Diptheria, and Schooling have very nice linear trends. Adult Mortality appears to have a roughly linear trend, but with a cone shape. We will attempt to transform it.
 
-```{r}
+```{r, message=FALSE}
 ggplot(data = life_expect_cu,
        mapping = aes(x = Adult.Mortality, y = Life.Expectancy)) +
   geom_point() +
