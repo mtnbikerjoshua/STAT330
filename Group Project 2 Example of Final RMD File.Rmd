@@ -1,0 +1,177 @@
+---
+title: "Understanding How Environmental Factors Affect Mortality"
+author: Me, Myself, and I
+output: html_document
+---
+
+<style type="text/css">
+h1.title {
+font-size: 40px;
+text-align: center;
+}
+h4.author {
+font-size: 40px;
+text-align: center;
+}
+</style>
+
+```{r setup, include=FALSE}
+# load packages here
+# library(corrplot)  # for correlation matrix
+# library(tidyverse)
+# library(ggfortify)  # plot glmnet objects using ggplot instead of base R
+# library(car)  # for VIFs
+# library(bestglm)  # for stepwise variable selection methods
+# library(glmnet)  # for ridge, lasso, and elastic net
+# set.seed(12345)  # make sure to set your seed when doing cross validation!
+```
+
+### Background and Introduction
+
+Environmental impact studies seek to identify and quantify the affect of environmental conditions on human and ecological health. For example, extreme heat poses a threat to public health by creating conditions conducive to hyperthermia. Likewise, extreme cold poses a threat to public health via conditions suitable to hypothermia. Extreme weather events (tornadoes, typhoons, etc.) also pose an obvious threat to public health. A less understood environmental variable that, hypothetically, may also pose a threat to public health is the concentration of pollution (air quality).
+
+We are interested in determining which, if any, environmental and socioeconomic characteristics contribute to the mortality rate, with particular concern for how pollution impacts mortality. Given recent literature (Zabriskie et al. 2020, Zabbers et al. 2019, and Zabs et al. 2018), we hypothesize that pollution will have a significant affect on mortality, specifically that higher pollution levels will increase mortality. We also believe that education and the average summer temperature in a city will have a significant negative association with mortality. Additionally, populations with older people, we hypothesis, will generally be positively associated with mortality.
+
+To test these assumptions, we obtained various environmental and socioeconomic data for 60 cities in the U.S. We will begin our analysis by applying basic summary statistics and exploratory data techniques to better understand the data. Then, we apply multiple linear regression with mortality as the response, regressed on the other variables in the data set. We apply .....
+
+We conclude our analysis by using what we learned to infer to the broader population. We recommend steps cities can take to reduce mortality, given what we found in our analysis. We also...
+
+### Methods and Results
+
+In an effort to understand the impact of the environment on human health, we obtained a data set that contains environmental and socioeconomic information for 60 different cities in the U.S. The data comes from an online database at www.environstatsisawesome.com, and we downloaded the data set (a .csv file) on February 27, 2020. 
+
+The following table displays the variable names in this data set, along with their descriptions.
+
+Variable       | Description
+-------------- | -------------
+AnnPrecip      | Average annual precipitation
+MeanJanTemp    | Average January temperature (in degrees Fahrenheit)
+MeanJulyTemp   | Average July temperature (in degrees Fahrenheit)
+PctGT65        | Indicator for if the percent of the population that is older than 65 years old exceeds 9% (1=Yes, 0=No)
+PopPerHouse    | Population per household
+School         | Median school years completed
+PctSound       | Percent of housing units that are "sound"
+PopPerSqMile   | Population per square mile
+PctNonWhite    | Percent of population that is nonwhite
+PctWhiteCollar | Percent of employment in white-collar jobs
+PctU20000      | Percent of families with income under $20,000
+Hydrocarbons   | Relative pollution potential of hydrocarbons
+Nitrogen       | Relative pollution potential of oxides in nitrogen
+SO2            | Relative pollution potential of oxides in sulfur dioxide
+RelHumid       | Annual average relative humidity
+AAMort         | Age-adjusted mortality (the response variable)
+
+We start by applying basic summary and exploratory statistics to this data to better understand the data and identify trends.
+
+```{r}
+env <- read.csv("EnvironmentalImpactsWithCategorical.txt", 
+                header = TRUE, sep = " ")
+head(env)
+
+# exploratory data analysis
+summary(env)  # check for strange values
+env$PctGT65 <- as.factor(env$PctGT65)  # make the categorical variable a factor
+# <...more code here...>
+# include things like: correlation matrix, scatterplot matrix, boxplots of
+# categorical variables, histograms of continuous variables, color-coded
+# scatterplots, interaction plots (if appropriate), etc.
+```
+
+From our exploratory data analyses, we notice several interesting features. First, PctNonWhtie is the most highly (positively) correlated with mortality. AnnPrecip is also positively correlated with mortality, and School is negatively correlated with mortality. PctSound and PctU20000 are strongly negatively correlated. This makes sense as older people generally have larger incomes than younger people. We also notice the three pollution variables are highly positively correlated with each other. This could be a problem for multiple linear regression, since the model assumes the predictors are not strongly correlated with each other. 
+
+After analyzing the histograms of some of the variables, we notice there are some that are very skewed. Knowing this can cause a problem for some of the assumptions, we will likely need to transform these in the future. 
+
+We noticed a negative value for the AnnPrecip variable, so we removed that row from the data set. We also noticed a value of 111 for the PctU20000 variable, which cannot be possible, so we removed that row from the data, as well.
+
+We also notice...
+
+Additionally, we will consider including interaction terms, particularly an interaction between ... and ... We think there might be an interaction between these two variables since...
+
+We now want to fit a multiple linear regression model to the data set with AAMort as the response and the remaining variables as predictors. Here is the general linear model we want to fit:
+
+$\text{AAMort}_i = \beta_0...$
+
+
+##### Variable Selection
+
+We will start by doing variable selection to find the simplest model possible. We also think multicollinearity will be an issue with the three pollution variables, so variable selection will help reduce this problem.
+
+```{r, fig.align='center'}
+# <... code here with different variable selection procedures...>
+```
+Variable            | Best Subset | Backward | Sequential Replacement | LASSO  | Elastic Net
+--------------------| ----------- | -------- | ---------------------- | ------ | -----------
+                    |             |          |                        |        |      
+
+
+...Given the results from all of the variable selection procedures, shown in the table above, we choose to keep AnnPrecip, MeanJanTemp, School, PctNonWhite, and log.Nit in our final model.
+
+##### Initial Linear Model
+
+```{r, fig.align='center'}
+# <...code to fit linear model with selected variables and code to check ALL
+# assumptions...>
+```
+
+After fitting the linear regression model and checking the assumptions, we notice several assumptions may not be met. Specifically...
+
+##### Trying Several Linear Models
+
+Since homoscedasticity was likely not met, we apply a Box-Cox transform to help us determine which transformation to use when transforming Y.
+
+```{r, fig.align='center'}
+# <...code for boxCox, new linear model, and assumption checking, etc...>
+```
+
+The Box-Cox transform suggested....and this helped with the homoscedasticity assumption. We also realized that we should transform the School variable to better satisfy the linearity assumption. Next, we saw that...
+
+We decided to try including an interaction between ... and ... in our model since the results from our EDA suggested there might be a significant interaction between those two variables. 
+
+```{r, fig.align='center'}
+# <...code for interactions...>
+```
+
+We found that the interaction is significant after performing an ANOVA to compare the two models: one with the interaction, one without. We will now do one final check of the assumptions to make sure this model is appropriate to describe the data. 
+
+##### Final Linear Model
+
+```{r, fig.align='center'}
+# <...code for linear model, assumption checking, etc...>
+```
+
+Our final model seems to meet all of the assumptions of linear regression. Specifically, the variance inflation factors are all under ten, and the residuals appear homoscedastic, as shown in the residuals versus fitted values plot. The assumption of... 
+
+Our final fitted model is: 
+
+$\log(\widehat{\text{AAMort}}_i) = \beta_0...$
+
+##### Model Assessment
+
+Now that we have a model that describes the data well with all assumptions met, we would like to use the model to make inferences and predictions. We are interested in creating confidence intervals for the selected variables, as well as getting predictions for new cities. We are particularly interested in the predicted average mortality for a city with the characteristics of Provo. We found the annual precipitation, average January temperature, median number of years of school completed, percent of population that is nonwhite, and a rough estimate of the amount of nitrogen in the air. We will use this information to create confidence and prediction intervals for average mortality. 
+
+```{r, fig.align='center'}
+# <... code here...>
+# Include things like: slopes, hypothesis tests, confidence intervals, 
+# prediction intervals, etc.
+# If you have an interaction, code to compute the effect of one of the 
+# interaction variables on the response, etc.
+```
+
+The confidence intervals for the variables are very informative. For example, we are 95% confident that... That is a fairly large range, and suggests increasing education opportunities in communities could significantly lower mortality. Another variable we found interesting was...
+
+We also were able to make intervals for a new city like Provo. We found that...
+
+< Include LOTS of interpretations here. Be especially cautious of your interpretations if you have interactions >
+
+We are also interested in how well the model fits the data. To do this, we look at metrics such as $R^2$, the RMSE, and.... These metrics are important to check and understand because...
+
+```{r, fig.align='center'}
+# <...more code here...>
+# Include things like: R2, RMSE, MAE, etc.
+```
+
+It turns out that the model fits the data pretty well. An $R^2$ of 74% is rather high, and indicates that...
+
+### Summary and Conclusions
+
+Understanding how environmental and socioeconomic characteristics contribute to the mortality rate can be critical to increasing overall human health and lifespan. We conducted an analysis to determine which of these types of variable significantly affect mortality, with a specific interest in air quality/pollution. After fitting a multiple linear regression model, we found that air quality, does, indeed, have a significant negative impact on mortality. We also found that the amount of education the population has decreases mortality. Additionally,...

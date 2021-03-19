@@ -31,9 +31,9 @@ set.seed(12345)
 
 The World Health Organization (WHO) and United Nations (UN) were interested in factors affecting life expectancy in countries around the world. In 2015 they collected demographic and immunization data from 130 countries.\
 
-The purpose of this analysis is to find which factors are correlated with life expectancy and their relationship. We expect to find that having a greater proportion of the population immunized will lead to increased life expectency and that greater schooling will also be associated with greater life expectancy, although especially in that case we do not believe there is necessarily a causal relationship.\
+The purpose of this analysis is to find which factors are correlated with life expectancy and their relationship. We expect to find that having a greater proportion of the population immunized will lead to increased life expectancy and that greater schooling will also be associated with greater life expectancy, although especially in that case we do not believe there is necessarily a causal relationship.\
 
-To analyze these hypotheses, we will perform linear regression using `life.expectancy` as our response variable. We will check the assumptions of linear regression and remove or transform variables as necessary. If two or more of the variables are highly correlated, we will use several variable selection and shrinkage methods to choose the most appropriate subset. If transformations are necessary, we will use the Box-Cox method and plots of different transformations to help us determine the best one. After performing regression, we will examine the model and the hypothesis tests to see which variables are significant and how they affect life expectancy. Finally, we will provide our results along with confidence intervals.
+To analyze these hypotheses, we will perform linear regression using `life.expectancy` as our response variable. We will check the assumptions of linear regression and remove or transform variables as necessary. If transformations are necessary, we will use the Box-Cox method and plots of different transformations to help us determine the best one. In order to avoid multicolinearity and over-fitting, we will use several variable selection and shrinkage methods to choose the most appropriate subset of variables to keep in the model. After performing regression, we will examine the model and the hypothesis tests to see which variables are significant and how they affect life expectancy. Finally, we will provide our results along with confidence intervals.
 
 ### Methods and Results
 
@@ -62,44 +62,31 @@ We start by applying basic summary and exploratory statistics to this data to be
 life_expect <- read_csv("lifeexpect.csv") %>%
   # Change Status into a numeric variable where 1 means
   #   developed and 0 means developing
-  mutate(Developed = ifelse(Status == "Developed", 1, 0),
+  mutate(Status = factor(Status),
          # Fix capitalization on Life.expectancy
          Life.Expectancy = Life.expectancy) %>%
   # Remove un-needed columns
-  select(Life.Expectancy, Adult.Mortality, Hepatitis.B, Measles, BMI, Polio,
-         Diphtheria, GDP, Population, Schooling, Developed) %>% 
+  select(Life.Expectancy, Adult.Mortality, Hepatitis.B, BMI, Polio,
+         Diphtheria, GDP, Population, Schooling, Status) %>% 
   filter(Diphtheria < 100)
-
-# create data set only with continuous variable
-life_expect_cont <- life_expect %>% select(Life.Expectancy : Schooling)
-
-### scatterplot matrix (only with continuous)
-point_matrix(life_expect_cont)
-
-### correlation matrix (only used for continuous variables)
-cor(life_expect_cont)
-                
 life_expect
 summary(life_expect)
+
+# create data set only with continuous variable
+life_expect_cont <- life_expect %>% select(-Status)
+
 # Function to create scatterplot matrix of `data`
 point_matrix <- function(data) {
   par(pty = "s", las = 1)
   pairs(data, pch = ".", lower.panel = NULL)
 }
+### scatterplot matrix (only with continuous)
+point_matrix(life_expect_cont)
 
-# exploratory data analysis
-cor(life_expect)
-pairs(life_expect, pch=5)
-life_expect$Life.Expectancy
-life_expect$Adult.Mortality <- as.numeric(life_expect$Adult.Mortality)
-life_expect$Hepatitis.B <- as.numeric(life_expect$Hepatitis.B)
-life_expect$Measles <- as.numeric(life_expect$Measles)
-life_expect$BMI <- as.numeric(life_expect$BMI)
-life_expect$Polio <- as.numeric(life_expect$Polio)
-life_expect$Diphtheria <- as.numeric(life_expect$Diphtheria)
-life_expect$GDP <- as.numeric(life_expect$GDP)
-life_expect$Population <- as.numeric(life_expect$Population)
-life_expect$Schooling <- as.numeric(life_expect$Schooling)
+### correlation matrix (only used for continuous variables)
+cor(life_expect_cont)
+corrplot(cor(life_expect_cont), type = "upper", diag = F,
+         tl.col = "#1f3366", cl.pos = "n")
 
 
 #### Histogram
@@ -110,93 +97,164 @@ histLifeExpect <- function(variable, name, width) {
   xlab(name) +
   theme(aspect.ratio = 1)
 }
-histLifeExpect(life_expect$Adult.Mortality, "Adult.Mortality", 10)
-histLifeExpect(life_expect$Hepatitis.B, "Hepatitis.B", 1)
-histLifeExpect(life_expect$Measles, "Measles", 2)
-histLifeExpect(life_expect$BMI, "BMI", 5)
-histLifeExpect(life_expect$Polio, "Polio", 10)
-histLifeExpect(life_expect$Diphtheria, "Diphtheria", 7)
-histLifeExpect(life_expect$GDP, "GDP", 2)
-histLifeExpect(life_expect$Population, "Population", 10000000)
-histLifeExpect(life_expect$Schooling, "Schooling", 2)
+# We remove GDP because the hist is useless and takes a long time to run
+to_hist <- life_expect_cont %>%
+  select(-c(Life.Expectancy, GDP))
+mapply(histLifeExpect,
+       variable = to_hist,
+       name = names(to_hist),
+       width = c(25, 5, 5, 10, 7, 10000000, 2),
+       SIMPLIFY = FALSE)
 
-### scatter plot 
-scatterLifeExpect <- function(variable) {
-  ggplot(data = life_expect, mapping = aes(x = variable,  y = Life.Expectancy)) +
-  # when using this code for future data sets, make sure to change the binwidth:
-  geom_point() + theme_bw() +
-  theme(aspect.ratio = 1)
+# Individual scatterplots for easier viewing
+scatter <- function(data, x_ind, y_ind) {
+  x <- pull(data, x_ind)
+  y <- pull(data, y_ind)
+  ggplot(mapping = aes(x = x, y = y)) +
+    geom_point() +
+    geom_smooth(method = "lm", se = FALSE) +
+    theme_minimal() +
+    theme(aspect.ratio = 1) +
+    xlab(names(data)[x_ind]) +
+    ylab(names(data)[y_ind])
 }
-scatterLifeExpect(life_expect$Adult.Mortality)
-scatterLifeExpect(life_expect$Hepatitis.B)
-scatterLifeExpect(life_expect$Measles)
-scatterLifeExpect(life_expect$BMI)
-scatterLifeExpect(life_expect$Polio)
-scatterLifeExpect(life_expect$Diphtheria)
-scatterLifeExpect(life_expect$GDP)
-scatterLifeExpect(life_expect$Population)
-scatterLifeExpect(life_expect$Schooling)
+map(2:length(life_expect_cont), scatter, data = life_expect_cont, y_ind = 1)
 
 
-### Box Plot (for categorical: developed)
-# turn categorical variable to factor
-life_expect$Developed <- as.factor(life_expect$Developed)
-
-ggplot(data = life_expect, mapping = aes(x = Developed, y = Life.Expectancy)) +
+### Box Plot (for categorical: Status)
+ggplot(data = life_expect, mapping = aes(x = Status, y = Life.Expectancy)) +
   geom_boxplot() +
   theme_bw() +
   theme(aspect.ratio = 1)
-
-
-### Interaction plot
-
-
-# ggplot(data = life_expect, mapping = aes(x = Hepatitis.B,  y = Life.Expectancy)) +
-#   # when using this code for future data sets, make sure to change the binwidth:
-#   geom_point() + theme_bw() +
-#   theme(aspect.ratio = 1)
-# ggplot(data = life_expect, mapping = aes(x = Measles)) + 
-#   # when using this code for future data sets, make sure to change the binwidth: 
-#   geom_histogram(mapping = aes(y = ..density..), binwidth = 2) +
-#   theme(aspect.ratio = 1)
-# ggplot(data = life_expect, mapping = aes(x = BMI)) + 
-#   # when using this code for future data sets, make sure to change the binwidth: 
-#   geom_histogram(mapping = aes(y = ..density..), binwidth = 5) +
-#   theme(aspect.ratio = 1)
-# ggplot(data = life_expect, mapping = aes(x = Polio)) + 
-#   # when using this code for future data sets, make sure to change the binwidth: 
-#   geom_histogram(mapping = aes(y = ..density..), binwidth = 10) +
-#   theme(aspect.ratio = 1)
-# ggplot(data = life_expect, mapping = aes(x = Diphtheria)) + 
-#   # when using this code for future data sets, make sure to change the binwidth: 
-#   geom_histogram(mapping = aes(y = ..density..), binwidth = 7) +
-#   theme(aspect.ratio = 1)
-# ggplot(data = life_expect, mapping = aes(x = GDP)) + 
-#   # when using this code for future data sets, make sure to change the binwidth: 
-#   geom_histogram(mapping = aes(y = ..density..), binwidth = 2) +
-#   theme(aspect.ratio = 1)
-# ggplot(data = life_expect, mapping = aes(x = Population)) +
-#   # when using this code for future data sets, make sure to change the binwidth:
-#   geom_histogram(mapping = aes(y = ..density..), binwidth = 10000) +
-#   theme(aspect.ratio = 1)
-# ggplot(data = life_expect, mapping = aes(x = Schooling)) + 
-#   # when using this code for future data sets, make sure to change the binwidth: 
-#   geom_histogram(mapping = aes(y = ..density..), binwidth = 2) +
-#   theme(aspect.ratio = 1)
-# <...more code here...
-# include things like: correlation matrix, scatterplot matrix, boxplots of
-# categorical variables, histograms of continuous variables, color-coded
-# scatterplots, interaction plots (if appropriate), etc.
 ```
 
+Next, we will run an initial linear model and take a look at the residuals to see what transformations might need to be done. We will also refer back to the scatterplots above.
+```{r}
+init_model <- lm(Life.Expectancy ~ ., data = life_expect)
+resid_vs_fitted(init_model)
+jcreg_hist(init_model)
+jcreg_qq(init_model)
+shapiro.test(init_model$residuals)
+```
 
+The residuals are fairly normal, with some outliers at the lower tail. There does appear to be a slight cone shape to the residuals, which could be a problem. Based on these graphs we will attempt a transformation on the response.
 
-$\text{AAMort}_i = \beta_0...$
+```{r}
+# Apply boxCox to give us a starting point
+boxCox(init_model)
+
+# Squared transformation
+life_expect_sq <- life_expect %>%
+  mutate(Life.Expectancy = Life.Expectancy^2)
+sq_model <- lm(Life.Expectancy ~ ., data = life_expect_sq)
+resid_vs_fitted(sq_model)
+jcreg_hist(sq_model)
+jcreg_qq(sq_model)
+shapiro.test(sq_model$residuals)
+
+# Power of 1.5 transformation
+life_expect_15 <- life_expect %>%
+  mutate(Life.Expectancy = Life.Expectancy^1.5)
+model_15 <- lm(Life.Expectancy ~ ., data = life_expect_15)
+resid_vs_fitted(model_15)
+jcreg_hist(model_15)
+jcreg_qq(model_15)
+shapiro.test(model_15$residuals)
+
+# Sqrt transformation
+life_expect_sqrt <- life_expect %>%
+  mutate(Life.Expectancy = sqrt(Life.Expectancy))
+sqrt_model <- lm(Life.Expectancy ~ ., data = life_expect_sqrt)
+resid_vs_fitted(sqrt_model)
+jcreg_hist(sqrt_model)
+jcreg_qq(sqrt_model)
+shapiro.test(sqrt_model$residuals)
+
+# Log transformation
+life_expect_log <- life_expect %>%
+  mutate(Life.Expectancy = log(Life.Expectancy))
+log_model <- lm(Life.Expectancy ~ ., data = life_expect_log)
+resid_vs_fitted(log_model)
+jcreg_hist(log_model)
+jcreg_qq(log_model)
+shapiro.test(log_model$residuals)
+
+# Cubed transformation
+life_expect_cu <- life_expect %>%
+  mutate(Life.Expectancy = Life.Expectancy^3)
+cu_model <- lm(Life.Expectancy ~ ., data = life_expect_cu)
+resid_vs_fitted(cu_model)
+jcreg_hist(cu_model)
+jcreg_qq(cu_model)
+shapiro.test(cu_model$residuals)
+
+# Power of 4 transformation
+life_expect_4 <- life_expect %>%
+  mutate(Life.Expectancy = Life.Expectancy^4)
+model_4 <- lm(Life.Expectancy ~ ., data = life_expect_4)
+resid_vs_fitted(model_4)
+jcreg_hist(model_4)
+jcreg_qq(model_4)
+shapiro.test(model_4$residuals)
+```
+Based on the transformations attempted, the best one appears to be a cubic transformation. The cubic transformation sees great improvement in homoscedasticity and some improvement in normality. We will complete the rest of the analysis on a cubic scale.
+
+We will also check the need for transformations of the predictor variables.
+```{r}
+life_expect_cu_cont <- life_expect_cu %>%
+  select(-Status)
+map(2:length(life_expect_cu_cont), scatter,
+    data = life_expect_cu_cont, y_ind = 1)
+```
+
+Hepatitis B, Polio, GDP, and Population appear to have no trend whatsoever, therefore there is no transformation we can apply to make them linear. BMI, Diptheria, and Schooling have very nice linear trends. Adult Mortality appears to have a roughly linear trend, but with a cone shape. We will attempt to transform it.
+
+```{r}
+ggplot(data = life_expect_cu,
+       mapping = aes(x = Adult.Mortality, y = Life.Expectancy)) +
+  geom_point() +
+  geom_smooth(se = FALSE) +
+  theme_minimal() +
+  theme(aspect.ratio = 1)
+cor(life_expect_cu$Adult.Mortality, life_expect_cu$Life.Expectancy)
+
+# Log transform
+life_expect_cu_xt <- life_expect_cu %>%
+  mutate(Adult.Mortality = log(Adult.Mortality))
+ggplot(data = life_expect_cu_xt,
+       mapping = aes(x = Adult.Mortality, y = Life.Expectancy)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_minimal() +
+  theme(aspect.ratio = 1)
+cor(life_expect_cu_xt$Adult.Mortality, life_expect_cu_xt$Life.Expectancy)
+
+# Reciprocal transform
+life_expect_cu_xt <- life_expect_cu %>%
+  mutate(Adult.Mortality = 1/(Adult.Mortality))
+ggplot(data = life_expect_cu_xt,
+       mapping = aes(x = Adult.Mortality, y = Life.Expectancy)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_minimal() +
+  theme(aspect.ratio = 1)
+cor(life_expect_cu_xt$Adult.Mortality, life_expect_cu_xt$Life.Expectancy)
+
+# Reciprocal squared transform
+life_expect_cu_xt <- life_expect_cu %>%
+  mutate(Adult.Mortality = 1/(Adult.Mortality)^2)
+ggplot(data = life_expect_cu_xt,
+       mapping = aes(x = Adult.Mortality, y = Life.Expectancy)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_minimal() +
+  theme(aspect.ratio = 1)
+cor(life_expect_cu_xt$Adult.Mortality, life_expect_cu_xt$Life.Expectancy)
+```
+Based on the shape of the curve fit by `loess` we could add a squared and a cubic term in our model for Adult.Mortality, but we would risk over fitting. To check if that really improved our model we could fit a model with and without those terms and perform cross validation. We might also do the same thing for a reciprocal transformation. It seems however that the real trend in the original data is already linear, so for the purpose of this project, we will simply leave Adult.Mortality un-transformed.
 
 
 ##### Variable Selection
-
-We will start by doing variable selection to find the simplest model possible. We also think multicollinearity will be an issue with the three pollution variables, so variable selection will help reduce this problem.
 
 ```{r, fig.align='center'}
 # <... code here with different variable selection procedures...>
