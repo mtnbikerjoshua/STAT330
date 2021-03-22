@@ -24,7 +24,7 @@ library(ggfortify)
 library(car)
 library(bestglm)
 library(glmnet)
-set.seed(12345)
+set.seed(89954)
 ```
 
 ### Background and Introduction
@@ -91,10 +91,10 @@ corrplot(cor(life_expect_cont), type = "upper", diag = F,
          tl.col = "#1f3366", cl.pos = "n")
 #### Histogram
 histLifeExpect <- function(variable, name, width) {
-  ggplot(data = life_expect, mapping = aes(x = variable, y = Life.Expectancy)) + 
-  # when using this code for future data sets, make sure to change the binwidth: 
+  ggplot(data = life_expect, mapping = aes(x = variable)) +
   geom_histogram(mapping = aes(y = ..density..), binwidth = width) +
   xlab(name) +
+  ylab("Density") +
   theme(aspect.ratio = 1)
 }
 # We remove GDP because the hist is useless and takes a long time to run
@@ -155,6 +155,17 @@ jcreg_hist <- function(model) {
     ylab("Density") +
     theme_light()
 }
+jcreg_av <- function(model) {
+  predictors <- attr(model$terms, "term.labels")
+  rows <- ifelse(length(predictors > 3),
+                 floor(sqrt(length(predictors))),
+                 1)
+  cols <- ifelse(length(predictors > 3),
+                 length(predictors) / rows,
+                 3)
+  par(pty = "s")
+  car::avPlots(model, layout = c(rows, cols), pch = 19)
+}
 ```
 
 ```{r, warning=FALSE}
@@ -169,7 +180,7 @@ The residuals are fairly normal, with some outliers at the lower tail. There doe
 
 ```{r, message=FALSE, fig.height=4}
 # Apply boxCox to give us a starting point
-boxCox(init_model)
+boxCox(init_model, lambda = seq(-2, 4, 1/10))
 
 # Squared transformation
 life_expect_sq <- life_expect %>%
@@ -231,8 +242,27 @@ We will also check the need for transformations of the predictor variables.
 ```{r, message=FALSE, results=FALSE}
 life_expect_cu_cont <- life_expect_cu %>%
   select(-Status)
-map(2:length(life_expect_cu_cont), scatter,
-    data = life_expect_cu_cont, y_ind = 1)
+jcreg_av(cu_model)
+to_hist <- life_expect_cu_cont %>%
+  select(-c(Life.Expectancy, GDP))
+mapply(histLifeExpect,
+       variable = to_hist,
+       name = names(to_hist),
+       width = c(25, 5, 5, 10, 7, 10000000, 2),
+       SIMPLIFY = FALSE)
+life_expect_t <- life_expect_cu %>%
+  mutate(Adult.Mortality = log(Adult.Mortality),
+         Population = log(Population),
+         Hepatitis.B = log(1000 - Hepatitis.B),
+         Polio = log(1000 - Polio)) %>%
+  select(-Status)
+to_hist <- life_expect_t %>%
+  select(-c(Life.Expectancy, GDP))
+mapply(histLifeExpect,
+       variable = to_hist,
+       name = names(to_hist),
+       width = c(0.2, 0.01, 5, 10, 7, 0.9, 2),
+       SIMPLIFY = FALSE)
 ```
 
 Hepatitis B, Polio, GDP, and Population appear to have no trend whatsoever, therefore there is no transformation we can apply to make them linear. BMI, Diptheria, and Schooling have very nice linear trends. Adult Mortality appears to have a roughly linear trend, but with a cone shape. We will attempt to transform it.
