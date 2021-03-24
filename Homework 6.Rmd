@@ -83,7 +83,7 @@ scatterplot
 
 #### 6. Write out the general/theoretical model (using Greek letters/parameters) that you are thinking about applying to this data set (you will not write out the fitted model using coefficients, because you have not fit a model yet;)). DO NOT include interactions at this step. Remember, you will need to use dummy variables for Group. **USE "other" AS THE BASELINE CATEGORY**. Use variable names that are descriptive (not $y$, $x_1$, etc.).
 
-$$\text{LifeExp}_i\sim N\left(\mu=\beta_0+\beta_1\cdot\text{PPGDP}_i+\beta_2\cdot I(\text{Group}=\text{Africa})+\beta_3\cdot I(\text{Group}=\text{OECD}), \sigma\vphantom{a\atop b}\right)$$
+$$\text{LifeExp}_i\sim N\left(\mu=\beta_0+\beta_1\cdot\text{PPGDP}_i+\beta_2\cdot I(\text{Group}_i=\text{Africa})+\beta_3\cdot I(\text{Group}_i=\text{OECD})$$
 
 #### 7. Create dummy variables for the "africa" and "oecd" levels of Group.
 
@@ -97,7 +97,7 @@ life <- life %>%
 #### 8. Fit a multiple linear regression model to the data (no transformations, interactions, etc.) **using the dummy variables you created**. *USE "other" AS THE BASELINE CATEGORY FOR GROUP*. Print a summary of the results.
 
 ```{r}
-life_lm <- lm(LifeExp ~ . - Country, data = life)
+life_lm <- lm(LifeExp ~ PPGDP + GroupAfrica + GroupOECD, data = life)
 summary(life_lm)
 ```
 
@@ -132,61 +132,67 @@ We are 95% confident that the the average life expectancy for countries in Afric
 #### 15. Use the `anova` function to conduct a hypothesis test that tests some coefficients simultaneously. Specifically, test if Group has a significant effect on LifeExp. What do you conclude from the result of the test? Hint: you will need to create another linear model and compare it with the one you made previously.
 
 ```{r}
-lm(LifeExp ~ )
+noGroup_lm <- lm(LifeExp ~ PPGDP, data = life)
+anova(life_lm, noGroup_lm)
 ```
 
-< your response here > 
+With a very small p-value, we conclude that Group has a significant effect on the model and should be included.
 
 #### 16. Create a 95% confidence interval for the expected/average average life expectancy for a country in the OECD with an average per person GDP (log scale) of 9.5. Print the result, and briefly interpret this interval (like we did in class). (Use the `predict` function.)
 
 ```{r}
-# your code here
+predict(life_lm, interval = "confidence",
+        newdata = data.frame(PPGDP = 9.5, GroupAfrica = 0, GroupOECD = 1))
 ```     
 
-< your response here > 
+We are 95% confident that the mean of average life expectancy for countries in the OECD with a per person GDP of 9.5 is between 79.4 and 80.2.
 
 #### 17. Create a 95% prediction interval for the average life expectancy of a country in the OECD with an average per person GDP (log scale) of 9.5. Print the result, and briefly interpret this interval (like we did in class). (Use the `predict` function.)
 
 ```{r}
-# your code here
+predict(life_lm, interval = "prediction",
+        newdata = data.frame(PPGDP = 9.5, GroupAfrica = 0, GroupOECD = 1))
 ``` 
 
-< your response here > 
+We are 95% confident that if we observe a new country in the OECD with a per person GDP of 9.5, the average life expectancy for that country will be between 77.7 and 82.0.
 
 #### 18. Plot the fitted model on the scatterplot with the two continuous variables on the axes, colored by the categorical variable. Hint: you should have 3 different lines on your plot, and you will *not* need to have different line types or point shapes (you *will* need to have different colors).
 
-```{r, fig.align='center'}
-# your code here
+```{r, fig.align='center', message = FALSE}
+scatterplot +
+  geom_line(mapping = aes(y = predict(life_lm, newdata = life)), size = 1)
 ```
 
 
 #### 19. Write out the general/theoretical model (using Greek letters/parameters) for a model with PPGDP, Group, and an interaction between PPGDG and Group. Remember, you will need to use dummy variables for Group. **USE "other" AS THE BASELINE CATEGORY**. Use variable names that are descriptive (not $y$, $x_1$, etc.).
 
-< your response here > 
+$$\text{LifeExp}_i\sim N\left(\mu=\beta_0+\beta_1\cdot\text{PPGDP}_i+\beta_2\cdot I(\text{Group}_i=\text{Africa})+\beta_3\cdot I(\text{Group}_i=\text{OECD})+\beta_4\cdot\text{PPGDP}_i\cdot I(\text{Group}_i=\text{Africa})+\beta_5\cdot\text{PPGDP}_i\cdot I(\text{Group}_i=\text{OECD}), \sigma\vphantom{a\atop b}\right)$$ 
 
 #### 20. Fit a multiple linear regression model to the data **using the dummy variables you created**, and include an interaction term between PPGDP and Group. *USE "other" AS THE BASELINE CATEGORY FOR GROUP*. Print a summary of the results.
 
 ```{r, fig.align='center'}
-# your code here
+life_lm_inter <- lm(LifeExp ~ PPGDP + GroupAfrica + GroupOECD + PPGDP:GroupAfrica + PPGDP:GroupOECD, data = life)
+summary(life_lm_inter)
 ```
 
 #### 21. Use the `anova` function to test if the overall interaction between PPGDP and Group is significant. Print the result. What do you conclude?
 
 ```{r}
-# your code here
+anova(life_lm, life_lm_inter)
 ```
 
-< your response here > 
+Based on the very small p-value, we conclude that the overall interaction is significant and should be included in the model.
 
 #### 22. Plot the fitted model (with the interaction included) on the scatterplot with the two continuous variables on the axes, colored by the categorical variable. Hint: you should have 3 different lines on your plot, and you will *not* need to have different line types or point shapes (you *will* need to have different colors).
 
 ```{r, fig.align='center'}
-# your code here
+scatterplot +
+  geom_smooth(method = "lm", se = FALSE)
 ```
 
 #### 23. How did the fitted lines change when you included an interaction term compared with when you did not include an interaction term?
 
-< your response here > 
+The slope of the line for countries in the OECD changed.
 
 #### 24. What is the effect of PPGDP on LifeExp for countries in a country other than those in the OECD or Africa (i.e. in the "other" category)? You should report a number in a complete sentence (as done in class toward the end of the notes). Since this is a continuous-categorical interaction, and since we are focusing on the effect of the continuous variable, you should use the "one unit increase" terminology in your response.
 
