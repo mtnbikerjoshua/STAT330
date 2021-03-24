@@ -360,6 +360,11 @@ do.call(grid.arrange, hists)
 ```
 
 Adult Mortality was skewed, so we attempted a transformation. Clearly the log transform looks more normal than the others.
+```{r}
+life_expect_t <- life_expect_sq %>%
+  mutate(Adult.Mortality = log(Adult.Mortality))
+```
+
 
 ##### Final Linear Model
 
