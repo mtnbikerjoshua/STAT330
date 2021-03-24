@@ -24,6 +24,7 @@ library(ggfortify)
 library(car)
 library(bestglm)
 library(glmnet)
+library(gridExtra)
 set.seed(89954)
 ```
 
@@ -95,16 +96,18 @@ histLifeExpect <- function(variable, name, width) {
   geom_histogram(mapping = aes(y = ..density..), binwidth = width) +
   xlab(name) +
   ylab("Density") +
+  theme_classic() +
   theme(aspect.ratio = 1)
 }
 # We remove GDP because the hist is useless and takes a long time to run
 to_hist <- life_expect_cont %>%
   select(-c(Life.Expectancy, GDP))
-mapply(histLifeExpect,
+hists <- mapply(histLifeExpect,
        variable = to_hist,
        name = names(to_hist),
        width = c(25, 5, 5, 10, 7, 10000000, 2),
        SIMPLIFY = FALSE)
+do.call(grid.arrange, hists)
 
 # Individual scatterplots for easier viewing
 scatter <- function(data, x_ind, y_ind) {
@@ -118,8 +121,8 @@ scatter <- function(data, x_ind, y_ind) {
     xlab(names(data)[x_ind]) +
     ylab(names(data)[y_ind])
 }
-map(2:length(life_expect_cont), scatter, data = life_expect_cont, y_ind = 1)
-
+splots <- map(2:length(life_expect_cont), scatter, data = life_expect_cont, y_ind = 1)
+do.call(grid.arrange, splots)
 
 ### Box Plot (for categorical: Status)
 ggplot(data = life_expect, mapping = aes(x = Status, y = Life.Expectancy)) +
@@ -127,8 +130,8 @@ ggplot(data = life_expect, mapping = aes(x = Status, y = Life.Expectancy)) +
   theme_bw() +
   theme(aspect.ratio = 1)
 ```
-### Variable Selection
 
+### Variable Selection
 ```{r, fig.align='center'}
 #create new variable and put Life.Expectancy last
 life_expect_var <- as.data.frame(life_expect[c("Adult.Mortality", "Hepatitis.B", "BMI", "Polio", "Diphtheria", "GDP", "Population", "Schooling", "Status", "Life.Expectancy")])
@@ -236,18 +239,17 @@ jcreg_av <- function(model) {
   par(pty = "s")
   car::avPlots(model, layout = c(rows, cols), pch = 19)
 }
-jcreg_BrownForsyth <- function(data, response) {
-  grp <- as.factor(c(rep("lower", floor(dim(data)[1] / 2)), 
-                     rep("upper", ceiling(dim(data)[1] / 2))))
-  leveneTest(pull(stop[order(stop[response]), "resid"]) ~ grp, center = median)
-}
 ```
 
-```{r, warning=FALSE}
+```{r, warning=FALSE, fig.width=9.5}
 init_model <- lm(Life.Expectancy ~ Adult.Mortality + Diphtheria, data = life_expect)
-resid_vs_fitted(init_model)
-jcreg_hist(init_model)
-jcreg_qq(init_model)
+rvf <- resid_vs_fitted(init_model)@plots[[1]] +
+  theme_bw() + theme(aspect.ratio = 1)
+hist <- jcreg_hist(init_model) +
+  theme_bw() + theme(aspect.ratio = 1) +
+  ggtitle("Histogram of Residuals")
+qq <- jcreg_qq(init_model)@plots[[1]]
+grid.arrange(rvf, hist, qq, ncol = 3)
 shapiro.test(init_model$residuals)
 
 ```
@@ -255,151 +257,109 @@ shapiro.test(init_model$residuals)
 The residuals are fairly normal, with some outliers at the lower tail. There does appear to be a slight cone shape to the residuals, which could be a problem. Based on these graphs we will attempt a transformation on the response.
 
 ### Transformations
-```{r, message=FALSE, fig.height=4}
+```{r}
 # Apply boxCox to give us a starting point
 boxCox(init_model, lambda = seq(-2, 4, 1/10))
+```
 
+```{r, message=FALSE, fig.width=9.5}
 # Squared transformation
 life_expect_sq <- life_expect %>%
   mutate(Life.Expectancy = Life.Expectancy^2)
 sq_model <- lm(Life.Expectancy ~ Adult.Mortality + Diphtheria, data = life_expect_sq)
-resid_vs_fitted(sq_model)
-jcreg_hist(sq_model)
-jcreg_qq(sq_model)
+rvf <- resid_vs_fitted(sq_model)@plots[[1]] +
+  theme_bw() + theme(aspect.ratio = 1)
+hist <- jcreg_hist(sq_model) +
+  theme_bw() + theme(aspect.ratio = 1) +
+  ggtitle("Histogram of Residuals")
+qq <- jcreg_qq(sq_model)@plots[[1]]
+grid.arrange(rvf, hist, qq, ncol = 3)
 shapiro.test(sq_model$residuals)
 
 # Power of 1.5 transformation
 life_expect_15 <- life_expect %>%
   mutate(Life.Expectancy = Life.Expectancy^1.5)
 model_15 <- lm(Life.Expectancy ~ Adult.Mortality + Diphtheria, data = life_expect_15)
-resid_vs_fitted(model_15)
-jcreg_hist(model_15)
-jcreg_qq(model_15)
+rvf <- resid_vs_fitted(model_15)@plots[[1]] +
+  theme_bw() + theme(aspect.ratio = 1)
+hist <- jcreg_hist(model_15) +
+  theme_bw() + theme(aspect.ratio = 1) +
+  ggtitle("Histogram of Residuals")
+qq <- jcreg_qq(model_15)@plots[[1]]
+grid.arrange(rvf, hist, qq, ncol = 3)
 shapiro.test(model_15$residuals)
 
 # Cubed transformation
 life_expect_cu <- life_expect %>%
   mutate(Life.Expectancy = Life.Expectancy^3)
 cu_model <- lm(Life.Expectancy ~ Adult.Mortality + Diphtheria, data = life_expect_cu)
-resid_vs_fitted(cu_model)
-jcreg_hist(cu_model)
-jcreg_qq(cu_model)
+rvf <- resid_vs_fitted(cu_model)@plots[[1]] +
+  theme_bw() + theme(aspect.ratio = 1)
+hist <- jcreg_hist(cu_model) +
+  theme_bw() + theme(aspect.ratio = 1) +
+  ggtitle("Histogram of Residuals")
+qq <- jcreg_qq(cu_model)@plots[[1]]
+grid.arrange(rvf, hist, qq, ncol = 3)
 shapiro.test(cu_model$residuals)
 
 ```
+
 Based on the transformations attempted, the best one appears to be a squared or cubic transformation. The cubic transformation sees great improvement in homoscedasticity and some improvement in normality. The squared transformation has somewhat worse homoscedasticity the the cubic, but better normality. For simplicity, we will complete the rest of the analysis on a squared scale. We will attempt to further improve homoscedasticity with transformations of the predictors.
 
 ```{r, message=FALSE, results=FALSE}
-life_expect_cu_cont <- life_expect_cu %>%
-  select(-Status)
-jcreg_av(cu_model)
-to_hist <- life_expect_cu_cont %>%
-  select(-c(Life.Expectancy, GDP))
-mapply(histLifeExpect,
+life_expect_sq <- life_expect_sq %>%
+  select(Life.Expectancy, Adult.Mortality, Diphtheria)
+to_hist <- life_expect_sq %>%
+  select(-Life.Expectancy)
+hists <- mapply(histLifeExpect,
        variable = to_hist,
        name = names(to_hist),
-       width = c(25, 5, 5, 10, 7, 10000000, 2),
+       width = c(25, 5),
        SIMPLIFY = FALSE)
-life_expect_t <- life_expect_cu %>%
-  mutate(Adult.Mortality = log(Adult.Mortality),
-         Population = log(Population),
-         Hepatitis.B = log(1000 - Hepatitis.B),
-         Polio = log(1000 - Polio)) %>%
-  select(-Status)
-to_hist <- life_expect_t %>%
-  select(-c(Life.Expectancy, GDP))
-mapply(histLifeExpect,
-       variable = to_hist,
-       name = names(to_hist),
-       width = c(0.2, 0.01, 5, 10, 7, 0.9, 2),
-       SIMPLIFY = FALSE)
-```
+hists[["ncol"]] <- 2
+do.call(grid.arrange, hists)
 
-Hepatitis B, Polio, GDP, and Population appear to have no trend whatsoever, therefore there is no transformation we can apply to make them linear. BMI, Diptheria, and Schooling have very nice linear trends. Adult Mortality appears to have a roughly linear trend, but with a cone shape. We will attempt to transform it.
-
-```{r, message=FALSE}
-ggplot(data = life_expect_cu,
-       mapping = aes(x = Adult.Mortality, y = Life.Expectancy)) +
-  geom_point() +
-  geom_smooth(se = FALSE) +
-  theme_minimal() +
-  theme(aspect.ratio = 1)
-cor(life_expect_cu$Adult.Mortality, life_expect_cu$Life.Expectancy)
-
-# Log transform
-life_expect_cu_xt <- life_expect_cu %>%
+# Log transformation
+life_expect_t <- life_expect_sq %>%
   mutate(Adult.Mortality = log(Adult.Mortality))
-ggplot(data = life_expect_cu_xt,
-       mapping = aes(x = Adult.Mortality, y = Life.Expectancy)) +
-  geom_point() +
-  geom_smooth(method = "lm", se = FALSE) +
-  theme_minimal() +
-  theme(aspect.ratio = 1)
-cor(life_expect_cu_xt$Adult.Mortality, life_expect_cu_xt$Life.Expectancy)
+to_hist <- life_expect_t %>%
+  select(-Life.Expectancy)
+hists <- mapply(histLifeExpect,
+       variable = to_hist,
+       name = names(to_hist),
+       width = c(0.3, 5),
+       SIMPLIFY = FALSE)
+hists[["ncol"]] <- 2
+do.call(grid.arrange, hists)
 
-# Reciprocal transform
-life_expect_cu_xt <- life_expect_cu %>%
-  mutate(Adult.Mortality = 1/(Adult.Mortality))
-ggplot(data = life_expect_cu_xt,
-       mapping = aes(x = Adult.Mortality, y = Life.Expectancy)) +
-  geom_point() +
-  geom_smooth(method = "lm", se = FALSE) +
-  theme_minimal() +
-  theme(aspect.ratio = 1)
-cor(life_expect_cu_xt$Adult.Mortality, life_expect_cu_xt$Life.Expectancy)
+# Sqrt transformation
+life_expect_t <- life_expect_sq %>%
+  mutate(Adult.Mortality = sqrt(Adult.Mortality))
+to_hist <- life_expect_t %>%
+  select(-Life.Expectancy)
+hists <- mapply(histLifeExpect,
+       variable = to_hist,
+       name = names(to_hist),
+       width = c(1, 5),
+       SIMPLIFY = FALSE)
+hists[["ncol"]] <- 2
+do.call(grid.arrange, hists)
 
-# Reciprocal squared transform
-life_expect_cu_xt <- life_expect_cu %>%
-  mutate(Adult.Mortality = 1/(Adult.Mortality)^2)
-ggplot(data = life_expect_cu_xt,
-       mapping = aes(x = Adult.Mortality, y = Life.Expectancy)) +
-  geom_point() +
-  geom_smooth(method = "lm", se = FALSE) +
-  theme_minimal() +
-  theme(aspect.ratio = 1)
-cor(life_expect_cu_xt$Adult.Mortality, life_expect_cu_xt$Life.Expectancy)
-```
-Based on the shape of the curve fit by `loess` we could add a squared and a cubic term in our model for Adult.Mortality, but we would risk over fitting. To check if that really improved our model we could fit a model with and without those terms and perform cross validation. We might also do the same thing for a reciprocal transformation. It seems however that the real trend in the original data is already linear, so for the purpose of this project, we will simply leave Adult.Mortality un-transformed.
-
-
-##### Variable Selection
-
-```{r, fig.align='center'}
-# <... code here with different variable selection procedures...>
-```
-Variable            | Best Subset | Backward | Sequential Replacement | LASSO  | Elastic Net
---------------------| ----------- | -------- | ---------------------- | ------ | -----------
-                    |             |          |                        |        |      
-
-
-...Given the results from all of the variable selection procedures, shown in the table above, we choose to keep 
-
-##### Initial Linear Model
-
-```{r, fig.align='center'}
-# <...code to fit linear model with selected variables and code to check ALL
-# assumptions...>
+# Cbrt transformation
+life_expect_t <- life_expect_sq %>%
+  mutate(Adult.Mortality = Adult.Mortality^(1/3))
+to_hist <- life_expect_t %>%
+  select(-Life.Expectancy)
+hists <- mapply(histLifeExpect,
+       variable = to_hist,
+       name = names(to_hist),
+       width = c(0.3, 5),
+       SIMPLIFY = FALSE)
+hists[["ncol"]] <- 2
+do.call(grid.arrange, hists)
 ```
 
-After fitting the linear regression model and checking the assumptions, we notice several assumptions may not be met. Specifically...
-
-##### Trying Several Linear Models
-
-Since homoscedasticity was likely not met, we apply a Box-Cox transform to help us determine which transformation to use when transforming Y.
-
-```{r, fig.align='center'}
-# <...code for boxCox, new linear model, and assumption checking, etc...>
-```
-
-The Box-Cox transform suggested....and this helped with the homoscedasticity assumption. We also realized that we should transform the School variable to better satisfy the linearity assumption. Next, we saw that...
-
-We decided to try including an interaction between ... and ... in our model since the results from our EDA suggested there might be a significant interaction between those two variables. 
-
-```{r, fig.align='center'}
-# <...code for interactions...>
-```
-
-We found that the interaction is significant after performing an ANOVA to compare the two models: one with the interaction, one without. We will now do one final check of the assumptions to make sure this model is appropriate to describe the data. 
+Adult Mortality was skewed, so we attempted a transformation. Clearly the log transform looks more normal than the others.
 
 ##### Final Linear Model
 
