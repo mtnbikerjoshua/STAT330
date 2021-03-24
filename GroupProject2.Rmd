@@ -127,8 +127,78 @@ ggplot(data = life_expect, mapping = aes(x = Status, y = Life.Expectancy)) +
   theme_bw() +
   theme(aspect.ratio = 1)
 ```
+### Variable Selection
 
-Next, we will run an initial linear model and take a look at the residuals to see what transformations might need to be done. We will also refer back to the scatterplots above.
+```{r, fig.align='center'}
+#create new variable and put Life.Expectancy last
+life_expect_var <- as.data.frame(life_expect[c("Adult.Mortality", "Hepatitis.B", "BMI", "Polio", "Diphtheria", "GDP", "Population", "Schooling", "Status", "Life.Expectancy")])
+summary(life_expect_var)
+head(life_expect_var)
+
+life_expect_var_lm <- lm(Life.Expectancy ~ ., life_expect_var)
+summary(life_expect_var_lm)
+
+#BEST SUBSETS
+life_best_subsets_bic <- bestglm(life_expect_var, IC = "BIC", method = "exhaustive")
+
+life_best_subsets_bic$BestModels
+summary(life_best_subsets_bic$BestModel)
+
+# BACKWARD
+life_backward_bic <- bestglm(life_expect_var, IC = "BIC", method = "backward", t = 100)
+summary(life_backward_bic$BestModel)
+
+# SEQUENTIAL
+life_seqrep_bic <- bestglm(life_expect_var, IC = "BIC", method = "seqrep", t = 100)
+summary(life_seqrep_bic$BestModel)
+
+
+# Note: had trouble with the data turning into a matrix here
+life_expect_var_x <- as.matrix(life_expect_var[,1:7])
+life_expect_var_y <- life_expect_var[,8]
+
+#LASSO
+life_expect_var_lasso_cv <- cv.glmnet(x = life_expect_var_x,
+                              y = life_expect_var_y,
+                              type.measure = "mse",
+                              alpha = 1)
+life_expect_var_lasso_cv$lambda.min
+life_expect_var_lasso_cv$lambda.1se
+
+coef(life_expect_var_lasso_cv, s = "lambda.min")
+coef(life_expect_var_lasso_cv, s = "lambda.1se")
+
+#ELASTIC NET
+life_expect_var_elastic_cv <- cv.glmnet(x = life_expect_var_x,
+                              y = life_expect_var_y,
+                              type.measure = "mse",
+                              alpha = 0.5)
+life_expect_var_elastic_cv$lambda.min
+life_expect_var_elastic_cv$lambda.1se
+
+coef(life_expect_var_elastic_cv, s = "lambda.min")
+coef(life_expect_var_elastic_cv, s = "lambda.1se")
+
+```
+
+
+Variable            | Best Subset | Backward | Sequential Replacement | LASSO  | Elastic Net
+--------------------| ----------- | -------- | ---------------------- | ------ | -----------
+  Adult.Mortality   |      X      |     X    |          X             |   X     |      X
+  Hepatitis.B       |             |                                       X            X
+  BMI               |                                                     X            X
+  Polio             |                                                     X            X
+  Diphtheria        |      X            X               X                 X            X
+  GDP               |                                                     X            X
+  Population        |   
+  Schooling         |   
+  StatusDeveloping  |                                   X
+
+
+Given the results from all of the variable selection procedures, shown in the table above, we choose to keep Adult.Mortality and Diphtheria.
+
+## Initial Linear Model
+Next, we will run an initial linear model and take a look at the residuals to see what transformations might need to be done.
 ```{r}
 # Useful functions for later
 resid_vs_fitted <- function(model) {
@@ -166,18 +236,25 @@ jcreg_av <- function(model) {
   par(pty = "s")
   car::avPlots(model, layout = c(rows, cols), pch = 19)
 }
+jcreg_BrownForsyth <- function(data, response) {
+  grp <- as.factor(c(rep("lower", floor(dim(data)[1] / 2)), 
+                     rep("upper", ceiling(dim(data)[1] / 2))))
+  leveneTest(pull(stop[order(stop[response]), "resid"]) ~ grp, center = median)
+}
 ```
 
 ```{r, warning=FALSE}
-init_model <- lm(Life.Expectancy ~ ., data = life_expect)
+init_model <- lm(Life.Expectancy ~ Adult.Mortality + Diphtheria, data = life_expect)
 resid_vs_fitted(init_model)
 jcreg_hist(init_model)
 jcreg_qq(init_model)
 shapiro.test(init_model$residuals)
+
 ```
 
 The residuals are fairly normal, with some outliers at the lower tail. There does appear to be a slight cone shape to the residuals, which could be a problem. Based on these graphs we will attempt a transformation on the response.
 
+### Transformations
 ```{r, message=FALSE, fig.height=4}
 # Apply boxCox to give us a starting point
 boxCox(init_model, lambda = seq(-2, 4, 1/10))
@@ -185,7 +262,7 @@ boxCox(init_model, lambda = seq(-2, 4, 1/10))
 # Squared transformation
 life_expect_sq <- life_expect %>%
   mutate(Life.Expectancy = Life.Expectancy^2)
-sq_model <- lm(Life.Expectancy ~ ., data = life_expect_sq)
+sq_model <- lm(Life.Expectancy ~ Adult.Mortality + Diphtheria, data = life_expect_sq)
 resid_vs_fitted(sq_model)
 jcreg_hist(sq_model)
 jcreg_qq(sq_model)
@@ -194,51 +271,24 @@ shapiro.test(sq_model$residuals)
 # Power of 1.5 transformation
 life_expect_15 <- life_expect %>%
   mutate(Life.Expectancy = Life.Expectancy^1.5)
-model_15 <- lm(Life.Expectancy ~ ., data = life_expect_15)
+model_15 <- lm(Life.Expectancy ~ Adult.Mortality + Diphtheria, data = life_expect_15)
 resid_vs_fitted(model_15)
 jcreg_hist(model_15)
 jcreg_qq(model_15)
 shapiro.test(model_15$residuals)
 
-# Sqrt transformation
-life_expect_sqrt <- life_expect %>%
-  mutate(Life.Expectancy = sqrt(Life.Expectancy))
-sqrt_model <- lm(Life.Expectancy ~ ., data = life_expect_sqrt)
-resid_vs_fitted(sqrt_model)
-jcreg_hist(sqrt_model)
-jcreg_qq(sqrt_model)
-shapiro.test(sqrt_model$residuals)
-
-# Log transformation
-life_expect_log <- life_expect %>%
-  mutate(Life.Expectancy = log(Life.Expectancy))
-log_model <- lm(Life.Expectancy ~ ., data = life_expect_log)
-resid_vs_fitted(log_model)
-jcreg_hist(log_model)
-jcreg_qq(log_model)
-shapiro.test(log_model$residuals)
-
 # Cubed transformation
 life_expect_cu <- life_expect %>%
   mutate(Life.Expectancy = Life.Expectancy^3)
-cu_model <- lm(Life.Expectancy ~ ., data = life_expect_cu)
+cu_model <- lm(Life.Expectancy ~ Adult.Mortality + Diphtheria, data = life_expect_cu)
 resid_vs_fitted(cu_model)
 jcreg_hist(cu_model)
 jcreg_qq(cu_model)
 shapiro.test(cu_model$residuals)
 
-# Power of 4 transformation
-life_expect_4 <- life_expect %>%
-  mutate(Life.Expectancy = Life.Expectancy^4)
-model_4 <- lm(Life.Expectancy ~ ., data = life_expect_4)
-resid_vs_fitted(model_4)
-jcreg_hist(model_4)
-jcreg_qq(model_4)
-shapiro.test(model_4$residuals)
 ```
-Based on the transformations attempted, the best one appears to be a cubic transformation. The cubic transformation sees great improvement in homoscedasticity and some improvement in normality. We will complete the rest of the analysis on a cubic scale.
+Based on the transformations attempted, the best one appears to be a squared or cubic transformation. The cubic transformation sees great improvement in homoscedasticity and some improvement in normality. The squared transformation has somewhat worse homoscedasticity the the cubic, but better normality. For simplicity, we will complete the rest of the analysis on a squared scale. We will attempt to further improve homoscedasticity with transformations of the predictors.
 
-We will also check the need for transformations of the predictor variables.
 ```{r, message=FALSE, results=FALSE}
 life_expect_cu_cont <- life_expect_cu %>%
   select(-Status)

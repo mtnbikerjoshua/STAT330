@@ -1,0 +1,239 @@
+---
+title: "Homework 6"
+subtitle: <center> <h1>Multiple Linear Regression Additional Variable Types</h1> </center>
+author: <center> < PUT YOUR NAME HERE > <center>
+output: html_document
+---
+
+<style type="text/css">
+h1.title {
+  font-size: 40px;
+  text-align: center;
+}
+</style>
+
+```{r setup, include=FALSE}
+library(tidyverse)
+```
+
+## Data and Description
+
+**Note that for the sake of length for this homework assignment, I am not having you check the model assumptions. You certainly can, if you would like, and in "real life" you would definitely need to do this prior to any statistical inference.**
+
+**Note that you do not need to worry about making your plots look professional for this assignment. They should still, obviously, be readable, but you do not need to change the x- and y-axis limits. I trust you know how to do this by now, and this will save you some time.**
+
+
+Macroeconomists often speculate that life expectancy is linked with the economic well-being of a country. Macroeconomists also hypothesize that Organisation for Economic Co-operation and Development (OECD) (an international think tank charged with promoting policies that will improve global social and economic well-being) members will have longer life expectancy. To test these hypotheses, the LifeExpectancy.txt data set (found on Canvas) contains the following information:
+
+Variable | Description
+-------- | -------------
+LifeExp  | Average life expectancy in years
+Country  | Country name
+Group    | Is the country a member of OECD, Africa, or other?
+PPGDP    | Per person GDP (on the log scale)
+
+The Group variable indicates if the country is a member of the OECD, a member of the African continent, or belonging to neither group (other). Note that the Country variable is just for your reference - you will not use this variable in your model.
+
+Download LifeExpectancy.txt, and put it in the same folder as this R Markdown file.
+
+#### 0. Replace the text "< PUT YOUR NAME HERE >" (above next to "author:") with your full name.
+
+#### 1. Read in the data set, and call the data frame "life". Print a summary of the data and make sure the data makes sense.
+
+#### 2. Make the Group categorical variable a factor class (instead of a character class).
+
+```{r}
+life <- read.csv("LifeExpectancy.txt", sep = " ", row.names = 1)
+life <- tibble(life) %>%
+  mutate(Group = factor(Group))
+life
+summary(life)
+```
+
+#### 3. Create and print a scatterplot with the response on the $y$-axis and the other continuous variable on the $x$-axis. Comment on the the relationship between these two variables.
+
+```{r, fig.align='center'}
+(scatterplot <- ggplot(data = life,
+                       mapping = aes(x = PPGDP, y = LifeExp, color = Group)) +
+  geom_point() +
+  theme_minimal() +
+  theme(aspect.ratio = 1) +
+  ylab("Life Expectancy") +
+  xlab("Per Person GDP"))
+```
+
+There is clearly a strong linear relationship between these two variables.
+
+#### 4. Create and print a boxplot with the response on the $y$-axis and the categorical variable on the $x$-axis. Comment on the the relationship between these two variables.
+
+```{r, fig.align='center'}
+ggplot(data = life, mapping = aes(x = Group, y = LifeExp)) +
+  geom_boxplot() +
+  theme_classic() +
+  ylab("Life Expectancy")
+```
+
+Countries in Africa have mmuch lower life expectancies than other countries and countries in the OECD are closely clustered with a higher average life expectancy.
+
+#### 5. Create and print a color-coded scatterplot using all of the variables that will be in your model. Hint: plot the response on the $y$-axis, the other continuous variable on the $x$-axis, and color the points by the categorical variable.
+
+```{r, fig.align='center'}
+scatterplot
+```
+
+#### 6. Write out the general/theoretical model (using Greek letters/parameters) that you are thinking about applying to this data set (you will not write out the fitted model using coefficients, because you have not fit a model yet;)). DO NOT include interactions at this step. Remember, you will need to use dummy variables for Group. **USE "other" AS THE BASELINE CATEGORY**. Use variable names that are descriptive (not $y$, $x_1$, etc.).
+
+$$\text{LifeExp}_i\sim N\left(\mu=\beta_0+\beta_1\cdot\text{PPGDP}_i+\beta_2\cdot I(\text{Group}=\text{Africa})+\beta_3\cdot I(\text{Group}=\text{OECD}), \sigma\vphantom{a\atop b}\right)$$
+
+#### 7. Create dummy variables for the "africa" and "oecd" levels of Group.
+
+```{r}
+life <- life %>%
+  mutate(GroupAfrica = ifelse(Group == "africa", 1, 0),
+         GroupOECD = ifelse(Group == "oecd", 1, 0)) %>%
+  select(-Group)
+```
+
+#### 8. Fit a multiple linear regression model to the data (no transformations, interactions, etc.) **using the dummy variables you created**. *USE "other" AS THE BASELINE CATEGORY FOR GROUP*. Print a summary of the results.
+
+```{r}
+life_lm <- lm(LifeExp ~ . - Country, data = life)
+summary(life_lm)
+```
+
+#### 9. Briefly interpret the intercept (like we did in class). **Note that you will need to use the word "average" (or similar) twice since you are predicting an average already.** You will need to do this here and with the questions following, when interpreting.
+
+Countries with 0 GDP Per Person that are not in Africa and are not members of the OECD would theoretically have a mean life expectancy of 51.0 years on average.
+
+#### 10. Briefly interpret the coefficient for PPGDP (log scale) (like we did in class). You do not need to un-transform anything - you can just write something like "per person GDP (log scale)" in your response.
+
+For countries in the same group, we would expect a one unit increase in the log of per person GDP to result in a 2.9 year increase in average life expectancy.
+
+#### 11. Briefly interpret the coefficient for I(Group=OECD).
+
+Average life expectancy for countries in the OECD is 1.5 years higher than for countries with the same per person GDP not in the OECD and not in Africa.
+
+#### 12. For equal per person GDP (log scale), how does life expectancy change for countries that are members of the OECD compared to countries that are on the African continent? Show how you obtained this number, and briefly interpret this number (like we did in class).
+
+$$1.52983-(-12.29427)=13.8241$$
+
+Average life expectancy for countries in the OECD is 13.8 years higher than for countries with the same per person GDP in Africa not in the OECD.
+
+#### 13. Create 95% confidence intervals for all coefficients (use the `confint` function).
+
+```{r}
+confint(life_lm)
+```
+
+#### 14. Briefly interpret the 95% confidence interval for I(Group=Africa).
+
+We are 95% confident that the the average life expectancy for countries in Africa is between 11.7 and 12.8 years lower than average life expectancy in other countries with the same per person GDP.
+
+#### 15. Use the `anova` function to conduct a hypothesis test that tests some coefficients simultaneously. Specifically, test if Group has a significant effect on LifeExp. What do you conclude from the result of the test? Hint: you will need to create another linear model and compare it with the one you made previously.
+
+```{r}
+lm(LifeExp ~ )
+```
+
+< your response here > 
+
+#### 16. Create a 95% confidence interval for the expected/average average life expectancy for a country in the OECD with an average per person GDP (log scale) of 9.5. Print the result, and briefly interpret this interval (like we did in class). (Use the `predict` function.)
+
+```{r}
+# your code here
+```     
+
+< your response here > 
+
+#### 17. Create a 95% prediction interval for the average life expectancy of a country in the OECD with an average per person GDP (log scale) of 9.5. Print the result, and briefly interpret this interval (like we did in class). (Use the `predict` function.)
+
+```{r}
+# your code here
+``` 
+
+< your response here > 
+
+#### 18. Plot the fitted model on the scatterplot with the two continuous variables on the axes, colored by the categorical variable. Hint: you should have 3 different lines on your plot, and you will *not* need to have different line types or point shapes (you *will* need to have different colors).
+
+```{r, fig.align='center'}
+# your code here
+```
+
+
+#### 19. Write out the general/theoretical model (using Greek letters/parameters) for a model with PPGDP, Group, and an interaction between PPGDG and Group. Remember, you will need to use dummy variables for Group. **USE "other" AS THE BASELINE CATEGORY**. Use variable names that are descriptive (not $y$, $x_1$, etc.).
+
+< your response here > 
+
+#### 20. Fit a multiple linear regression model to the data **using the dummy variables you created**, and include an interaction term between PPGDP and Group. *USE "other" AS THE BASELINE CATEGORY FOR GROUP*. Print a summary of the results.
+
+```{r, fig.align='center'}
+# your code here
+```
+
+#### 21. Use the `anova` function to test if the overall interaction between PPGDP and Group is significant. Print the result. What do you conclude?
+
+```{r}
+# your code here
+```
+
+< your response here > 
+
+#### 22. Plot the fitted model (with the interaction included) on the scatterplot with the two continuous variables on the axes, colored by the categorical variable. Hint: you should have 3 different lines on your plot, and you will *not* need to have different line types or point shapes (you *will* need to have different colors).
+
+```{r, fig.align='center'}
+# your code here
+```
+
+#### 23. How did the fitted lines change when you included an interaction term compared with when you did not include an interaction term?
+
+< your response here > 
+
+#### 24. What is the effect of PPGDP on LifeExp for countries in a country other than those in the OECD or Africa (i.e. in the "other" category)? You should report a number in a complete sentence (as done in class toward the end of the notes). Since this is a continuous-categorical interaction, and since we are focusing on the effect of the continuous variable, you should use the "one unit increase" terminology in your response.
+
+```{r, fig.align='center'}
+# your code here, if needed
+```
+
+< your response here > 
+
+#### 25. What is the effect of PPGDP on LifeExp for countries in the OECD? You should report a number in a complete sentence (as done in class toward the end of the notes). Since this is a continuous-categorical interaction, and since we are focusing on the effect of the continuous variable, you should use the "one unit increase" terminology in your response.
+
+```{r, fig.align='center'}
+# your code here, if needed
+```
+
+< your response here > 
+
+#### 26. What is the effect of PPGDP on LifeExp for countries in Africa? You should report a number in a complete sentence (as done in class toward the end of the notes). Since this is a continuous-categorical interaction, and since we are focusing on the effect of the continuous variable, you should use the "one unit increase" terminology in your response.
+
+```{r, fig.align='center'}
+# your code here, if needed
+```
+
+< your response here > 
+
+#### 27. What is the effect of belonging to the OECD on LifeExp for countries with a PPGDP of 9? You should report a number in a complete sentence (as done in class toward the end of the notes).
+
+```{r, fig.align='center'}
+# your code here, if needed
+```
+
+< your response here > 
+
+#### 28. What is the effect of belonging to the OECD on LifeExp for countries with a PPGDP of 11? You should report a number in a complete sentence (as done in class toward the end of the notes).
+
+```{r, fig.align='center'}
+# your code here, if needed
+```
+
+< your response here > 
+
+
+
+#### 29. Briefly summarize what you learned, personally, from this analysis about the statistics, model fitting process, etc.
+
+< your response here > 
+
+#### 30. Briefly summarize what you learned from this analysis *to a non-statistician*. Write a few sentences about (1) the purpose of this data set and analysis and (2) what you learned about this data set from your analysis. Write your response as if you were addressing a business manager (avoid using statistics jargon) and just provide the main take-aways.
+
+< your response here > 
