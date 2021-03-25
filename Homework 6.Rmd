@@ -1,7 +1,7 @@
 ---
 title: "Homework 6"
 subtitle: <center> <h1>Multiple Linear Regression Additional Variable Types</h1> </center>
-author: <center> < PUT YOUR NAME HERE > <center>
+author: <center> Joshua Carpenter <center>
 output: html_document
 ---
 
@@ -196,50 +196,29 @@ The slope of the line for countries in the OECD changed.
 
 #### 24. What is the effect of PPGDP on LifeExp for countries in a country other than those in the OECD or Africa (i.e. in the "other" category)? You should report a number in a complete sentence (as done in class toward the end of the notes). Since this is a continuous-categorical interaction, and since we are focusing on the effect of the continuous variable, you should use the "one unit increase" terminology in your response.
 
-```{r, fig.align='center'}
-# your code here, if needed
-```
-
-< your response here > 
+For countries not in the OECD and not in Africa, we expect a one unit increase in PPGDP to result in a 2.94 year increase in life expectancy.
 
 #### 25. What is the effect of PPGDP on LifeExp for countries in the OECD? You should report a number in a complete sentence (as done in class toward the end of the notes). Since this is a continuous-categorical interaction, and since we are focusing on the effect of the continuous variable, you should use the "one unit increase" terminology in your response.
 
-```{r, fig.align='center'}
-# your code here, if needed
-```
-
-< your response here > 
+For countries in the OECD, we expect a one unit increase PPGDP to result in a 1.99 year average increase in average life expectancy.
 
 #### 26. What is the effect of PPGDP on LifeExp for countries in Africa? You should report a number in a complete sentence (as done in class toward the end of the notes). Since this is a continuous-categorical interaction, and since we are focusing on the effect of the continuous variable, you should use the "one unit increase" terminology in your response.
 
-```{r, fig.align='center'}
-# your code here, if needed
-```
-
-< your response here > 
+For countries in the OECD, we expect a one unit increase PPGDP to result in a 2.90 year average increase in average life expectancy.
 
 #### 27. What is the effect of belonging to the OECD on LifeExp for countries with a PPGDP of 9? You should report a number in a complete sentence (as done in class toward the end of the notes).
 
-```{r, fig.align='center'}
-# your code here, if needed
-```
-
-< your response here > 
+For countries with a per person GDP of 9, we expect belonging to the OECD to result in an average increase of 2.72 years in average life expectancy.
 
 #### 28. What is the effect of belonging to the OECD on LifeExp for countries with a PPGDP of 11? You should report a number in a complete sentence (as done in class toward the end of the notes).
 
-```{r, fig.align='center'}
-# your code here, if needed
-```
-
-< your response here > 
-
+For countries with a per person GDP of 9, we expect belonging to the OECD to result in an average increase of 0.81 years in average life expectancy.
 
 
 #### 29. Briefly summarize what you learned, personally, from this analysis about the statistics, model fitting process, etc.
 
-< your response here > 
+I learned how to perform ANOVA between two linear models. As it happens, that is super easy!
 
 #### 30. Briefly summarize what you learned from this analysis *to a non-statistician*. Write a few sentences about (1) the purpose of this data set and analysis and (2) what you learned about this data set from your analysis. Write your response as if you were addressing a business manager (avoid using statistics jargon) and just provide the main take-aways.
 
-< your response here > 
+The purpose of this analysis was to come up with a method of predicting average life expectancy of a country based off of per person GDP and whether they are part of the OECD or are in Africa. We determined that we can make such a prediction with good accuracy. We determined the both per person GDP and which group the country is in have an effect on the country's average life expectancy. We also determined that what group a country is in changes how per person GDP affects average life expectancy.
