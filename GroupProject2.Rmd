@@ -26,9 +26,185 @@ library(bestglm)
 library(glmnet)
 library(gridExtra)
 set.seed(89954)
+
+# Useful functions for later
+resid_vs_fitted <- function(model) {
+  autoplot(model, which = 1, ncol = 1) +
+    theme_minimal() +
+    theme(aspect.ratio = 1)
+}
+jcreg_qq <- function(model) {
+  autoplot(model, which = 2, ncol = 1) +
+    theme_bw() +
+    theme(aspect.ratio = 1)
+}
+jcreg_hist <- function(model) {
+  residuals <- data.frame(residuals = resid(model))
+  ggplot(data = residuals, mapping = aes(x = residuals)) +
+    geom_histogram(binwidth = sd(residuals$residuals / 4),
+                   mapping = aes(y = ..density..)) +
+    stat_function(fun = dnorm,
+                  color = "blue",
+                  args = list(mean = 0,
+                              sd = sd(residuals$residuals)),
+                  size = 1.2) +
+    xlab("Residuals") +
+    ylab("Density") +
+    theme_light()
+}
+jcreg_av <- function(model) {
+  predictors <- attr(model$terms, "term.labels")
+  rows <- ifelse(length(predictors > 3),
+                 floor(sqrt(length(predictors))),
+                 1)
+  cols <- ifelse(length(predictors > 3),
+                 length(predictors) / rows,
+                 3)
+  par(pty = "s")
+  car::avPlots(model, layout = c(rows, cols), pch = 19)
+}
+point_matrix <- function(data) {
+  par(pty = "s", las = 1)
+  pairs(data, pch = ".", lower.panel = NULL)
+}
+rpred_col <- function(data, residuals, predictor) {
+  ggplot2::ggplot(data = data,
+         mapping = ggplot2::aes(x = pull(data, predictor),
+                       y = residuals)) +
+    ggplot2::geom_point() +
+    ggplot2::geom_smooth(se = FALSE, span = 0.95, n = 7, size = 0.5) +
+    ggplot2::geom_abline(slope = 0, intercept = 0, linetype = "dashed") +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(aspect.ratio = 1) +
+    ggplot2::xlab(predictor) +
+    ggplot2::ylab("Residuals")
+}
+resid_vs_pred <- function(model) {
+  data <- model.frame(model)
+  predictors <- attr(model$terms, "term.labels")
+  plots <- lapply(predictors, rpred_col, data = data, residuals = resid(model))
+  plots["ncol"] <- ceiling(sqrt(length(plots)))
+  plots["top"] <- "Residuals vs Predictors"
+  do.call(gridExtra::grid.arrange, plots)
+}
+jcreg_boxplot <- function(model) {
+  residuals <- data.frame(residuals = resid(model))
+  ggplot2::ggplot(data = residuals, mapping = ggplot2::aes(y = residuals)) +
+    ggplot2::geom_boxplot() +
+    ggplot2::stat_summary(mapping = ggplot2::aes(x = 0),
+                 fun = mean, geom = "point",
+                 shape = 4, size = 2, color = "darkred") +
+    ggplot2::theme_classic() +
+    ggplot2::theme(aspect.ratio = 2,
+          axis.text.x = ggplot2::element_blank(),
+          axis.ticks.x = ggplot2::element_blank()) +
+    #  scale_y_continuous(limits = c(-20000, 30000), breaks = seq(-20000, 30000, 10000)) +
+    ggplot2::ylab("Residuals") +
+    ggplot2::xlab("")
+}
+jcreg_cooksd <- function(model, nLabels = 3) {
+  cooks_d <- cooks.distance(model)
+  top_cd <- as.numeric(names(sort(cooks_d, decreasing = TRUE)[1:nLabels]))
+
+  ggplot2::ggplot() +
+    ggplot2::geom_point(data = tibble::tibble(cooks_d),
+               mapping = ggplot2::aes(x = as.numeric(names(cooks_d)),
+                             y = cooks_d)) +
+    ggplot2::geom_text(mapping = ggplot2::aes(x = top_cd,
+                            y = cooks_d[top_cd] + max(cooks_d) / 40,
+                            label = top_cd)) +
+    ggplot2::theme_bw() +
+    ggplot2::ylab("Cook's Distance") +
+    ggplot2::xlab("Observation Number") +
+    ggplot2::geom_hline(mapping = ggplot2::aes(yintercept = 4 / length(cooks_d)),
+               color = "red", linetype = "dashed") +
+    ggplot2::theme(aspect.ratio = 1)
+}
+dfb_col <- function(df_betas, predictor, nLabels = 3) {
+  require(tibble)
+  # Find which observations have the highest dfbetas
+  top_vals <- df_betas[predictor] %>%
+    arrange(desc(abs(eval(parse(text = predictor))))) %>%
+    .[1:nLabels,] %>%
+    pull(predictor)
+  top_ind <- which(pull(df_betas, predictor) %in% top_vals)
+
+  out <- ggplot2::ggplot() +
+    ggplot2::geom_point(data = df_betas,
+               mapping = ggplot2::aes(x = as.numeric(rownames(df_betas)),
+                             y = abs(pull(df_betas, predictor)))) +
+    ggplot2::geom_text(mapping = ggplot2::aes(x = top_ind,
+                            y = abs(pull(df_betas, predictor)[top_ind]) + 0.07,
+                            label = top_ind)) +
+    ggplot2::theme_bw() +
+    ggplot2::theme(aspect.ratio = 1) +
+    ggplot2::ylab("Abs of DFBETAS") +
+    ggplot2::xlab("Observation Number") +
+    ggtitle(predictor)
+
+  if(length(dfbetas) <= 30) {
+    out <- out +
+      ggplot2::geom_hline(mapping = ggplot2::aes(yintercept = 1),
+                 color = "red", linetype = "dashed")
+  }else {
+    out <- out +
+      ggplot2::geom_hline(mapping = ggplot2::aes(yintercept = 2 / sqrt(length(dfbetas))),
+                 color = "red", linetype = "dashed")
+  }
+  return(out)
+}
+jcreg_dfbetas <- function(model, nLabels = 3) {
+  predictors <- attr(model$terms, "term.labels")
+  df_betas <-  tibble::as_tibble(dfbetas(model))[, predictors]
+
+  plots <- lapply(predictors, dfb_col, df_betas = df_betas, nLabels = nLabels)
+  plots["ncol"] <- ceiling(sqrt(length(plots)))
+  do.call(gridExtra::grid.arrange, plots)
+}
+jcreg_dffits <- function(model, nLabels = 3) {
+  df_fits <- dffits(model)
+  top_dff <- as.numeric(names(sort(abs(df_fits), decreasing = TRUE)[1:nLabels]))
+
+  df_fits_plot <- ggplot2::ggplot() +
+    ggplot2::geom_point(data =tibble::tibble(df_fits),
+               mapping = ggplot2::aes(x = as.numeric(names(df_fits)),
+                             y = abs(df_fits))) +
+    ggplot2::geom_text(mapping = ggplot2::aes(x = top_dff,
+                            y = abs(df_fits[top_dff]) + max(df_fits) / 40,
+                            label = top_dff)) +
+    ggplot2::theme_bw() +
+    ggplot2::ylab("Absolute Value of DFFITS for Y") +
+    ggplot2::xlab("Observation Number") +
+    ggplot2::theme(aspect.ratio = 1)
+  if(length(df_fits) <= 30) {
+    df_fits_plot +
+      ggplot2::geom_hline(mapping = ggplot2::aes(yintercept =
+                                 2 * sqrt(length(model$coefficients) /
+                                            length(df_fits))),
+                 color = "red", linetype = "dashed")
+  }else {
+    df_fits_plot +
+      ggplot2::geom_hline(mapping = ggplot2::aes(yintercept = 1),
+                 color = "red", linetype = "dashed")
+  }
+}
+cor_graphic <- function(data, show_key = FALSE, title = TRUE) {
+  par(mfrow = c(1, 2))
+  corrplot::corrplot(cor(data), method = "number", type = "upper", diag = F,
+                     tl.col = "#1f3366", cl.pos = "n")
+  if(title) title("Correlation Coefficients")
+  if (show_key) {
+    corrplot::corrplot(cor(data), type = "upper", diag = F, tl.col = "#1f3366")
+  }
+  else {
+    corrplot::corrplot(cor(data), type = "upper", diag = F, tl.col = "#1f3366",
+                       cl.pos = "n")
+  }
+  if(title) title("Correlation Matrix")
+}
 ```
 
-### Background and Introduction
+# Background and Introduction
 
 The World Health Organization (WHO) and United Nations (UN) were interested in factors affecting life expectancy in countries around the world. In 2015 they collected demographic and immunization data from 130 countries.\
 
@@ -36,7 +212,7 @@ The purpose of this analysis is to find which factors are correlated with life e
 
 To analyze these hypotheses, we will perform linear regression using `life.expectancy` as our response variable. We will check the assumptions of linear regression and remove or transform variables as necessary. If transformations are necessary, we will use the Box-Cox method and plots of different transformations to help us determine the best one. In order to avoid multicolinearity and over-fitting, we will use several variable selection and shrinkage methods to choose the most appropriate subset of variables to keep in the model. After performing regression, we will examine the model and the hypothesis tests to see which variables are significant and how they affect life expectancy. Finally, we will provide our results along with confidence intervals.
 
-### Methods and Results
+# Methods and Results
 
 The data set we will be using contains measurements, collected in 2015, of 130 different countries. This was collected by the World Health Organization and the United Nations. The data set contains measurements for both developed and developing countries.
 
@@ -77,19 +253,17 @@ summary(life_expect)
 # create data set only with continuous variable
 life_expect_cont <- life_expect %>% select(-Status)
 
-# Function to create scatterplot matrix of `data`
-point_matrix <- function(data) {
-  par(pty = "s", las = 1)
-  pairs(data, pch = ".", lower.panel = NULL)
-}
 ### scatterplot matrix (only with continuous)
 point_matrix(life_expect_cont)
 ```
-```{r, results=FALSE, message=FALSE}
+```{r}
 ### correlation matrix (only used for continuous variables)
 round(cor(life_expect_cont), 2)
 corrplot(cor(life_expect_cont), type = "upper", diag = F,
          tl.col = "#1f3366", cl.pos = "n")
+```
+
+```{r, results=FALSE, message=FALSE}
 #### Histogram
 histLifeExpect <- function(variable, name, width) {
   ggplot(data = life_expect, mapping = aes(x = variable)) +
@@ -131,11 +305,12 @@ ggplot(data = life_expect, mapping = aes(x = Status, y = Life.Expectancy)) +
   theme(aspect.ratio = 1)
 ```
 
-### Variable Selection
-```{r, fig.align='center'}
+## Variable Selection
+```{r, fig.align='center', results=FALSE, message = FALSE}
 #create new variable and put Life.Expectancy last
-life_expect_var <- as.data.frame(life_expect[c("Adult.Mortality", "Hepatitis.B", "BMI", "Polio", "Diphtheria", "GDP", "Population", "Schooling", "Status", "Life.Expectancy")])
-summary(life_expect_var)
+life_expect_var <- life_expect %>%
+  select(Adult.Mortality : Status, Life.Expectancy) %>%
+  as.data.frame()
 head(life_expect_var)
 
 life_expect_var_lm <- lm(Life.Expectancy ~ ., life_expect_var)
@@ -187,60 +362,21 @@ coef(life_expect_var_elastic_cv, s = "lambda.1se")
 
 Variable            | Best Subset | Backward | Sequential Replacement | LASSO  | Elastic Net
 --------------------| ----------- | -------- | ---------------------- | ------ | -----------
-  Adult.Mortality   |      X      |     X    |          X             |   X     |      X
-  Hepatitis.B       |             |                                       X            X
-  BMI               |                                                     X            X
-  Polio             |                                                     X            X
-  Diphtheria        |      X            X               X                 X            X
-  GDP               |                                                     X            X
-  Population        |   
-  Schooling         |   
-  StatusDeveloping  |                                   X
+  Adult.Mortality   |      X      |     X    |          X             |   X    |      X
+  Hepatitis.B       |             |          |                        |   X    |      X
+  BMI               |             |          |                        |   X    |      X
+  Polio             |             |          |                        |   X    |      X
+  Diphtheria        |      X      |     X    |          X             |   X    |      X
+  GDP               |             |          |                        |   X    |      X
+  Population        |             |          |                        |        |
+  Schooling         |             |          |                        |        |
+  Status            |             |          |          X             |        |
 
 
 Given the results from all of the variable selection procedures, shown in the table above, we choose to keep Adult.Mortality and Diphtheria.
 
 ## Initial Linear Model
 Next, we will run an initial linear model and take a look at the residuals to see what transformations might need to be done.
-```{r}
-# Useful functions for later
-resid_vs_fitted <- function(model) {
-  autoplot(model, which = 1, ncol = 1) +
-    theme_minimal() +
-    theme(aspect.ratio = 1)
-}
-jcreg_qq <- function(model) {
-  autoplot(model, which = 2, ncol = 1) +
-    theme_bw() +
-    theme(aspect.ratio = 1)
-}
-jcreg_hist <- function(model) {
-  residuals <- data.frame(residuals = resid(model))
-  ggplot(data = residuals, mapping = aes(x = residuals)) +
-    geom_histogram(binwidth = sd(residuals$residuals / 4),
-                   mapping = aes(y = ..density..)) +
-    stat_function(fun = dnorm,
-                  color = "blue",
-                  args = list(mean = 0,
-                              sd = sd(residuals$residuals)),
-                  size = 1.2) +
-    xlab("Residuals") +
-    ylab("Density") +
-    theme_light()
-}
-jcreg_av <- function(model) {
-  predictors <- attr(model$terms, "term.labels")
-  rows <- ifelse(length(predictors > 3),
-                 floor(sqrt(length(predictors))),
-                 1)
-  cols <- ifelse(length(predictors > 3),
-                 length(predictors) / rows,
-                 3)
-  par(pty = "s")
-  car::avPlots(model, layout = c(rows, cols), pch = 19)
-}
-```
-
 ```{r, warning=FALSE, fig.width=9.5}
 init_model <- lm(Life.Expectancy ~ Adult.Mortality + Diphtheria, data = life_expect)
 rvf <- resid_vs_fitted(init_model)@plots[[1]] +
@@ -251,12 +387,11 @@ hist <- jcreg_hist(init_model) +
 qq <- jcreg_qq(init_model)@plots[[1]]
 grid.arrange(rvf, hist, qq, ncol = 3)
 shapiro.test(init_model$residuals)
-
 ```
 
 The residuals are fairly normal, with some outliers at the lower tail. There does appear to be a slight cone shape to the residuals, which could be a problem. Based on these graphs we will attempt a transformation on the response.
 
-### Transformations
+## Transformations
 ```{r}
 # Apply boxCox to give us a starting point
 boxCox(init_model, lambda = seq(-2, 4, 1/10))
@@ -301,7 +436,7 @@ hist <- jcreg_hist(cu_model) +
 qq <- jcreg_qq(cu_model)@plots[[1]]
 grid.arrange(rvf, hist, qq, ncol = 3)
 shapiro.test(cu_model$residuals)
-
+point_matrix(life_expect_sq)
 ```
 
 Based on the transformations attempted, the best one appears to be a squared or cubic transformation. The cubic transformation sees great improvement in homoscedasticity and some improvement in normality. The squared transformation has somewhat worse homoscedasticity the the cubic, but better normality. For simplicity, we will complete the rest of the analysis on a squared scale. We will attempt to further improve homoscedasticity with transformations of the predictors.
@@ -321,39 +456,42 @@ do.call(grid.arrange, hists)
 
 # Log transformation
 life_expect_t <- life_expect_sq %>%
-  mutate(Adult.Mortality = log(Adult.Mortality))
+  mutate(Adult.Mortality = log(Adult.Mortality),
+        Diphtheria = log(Diphtheria))
 to_hist <- life_expect_t %>%
   select(-Life.Expectancy)
 hists <- mapply(histLifeExpect,
        variable = to_hist,
        name = names(to_hist),
-       width = c(0.3, 5),
+       width = c(0.3, 0.07),
        SIMPLIFY = FALSE)
 hists[["ncol"]] <- 2
 do.call(grid.arrange, hists)
 
 # Sqrt transformation
 life_expect_t <- life_expect_sq %>%
-  mutate(Adult.Mortality = sqrt(Adult.Mortality))
+  mutate(Adult.Mortality = sqrt(Adult.Mortality),
+        Diphtheria = log(Diphtheria))
 to_hist <- life_expect_t %>%
   select(-Life.Expectancy)
 hists <- mapply(histLifeExpect,
        variable = to_hist,
        name = names(to_hist),
-       width = c(1, 5),
+       width = c(1, 0.1),
        SIMPLIFY = FALSE)
 hists[["ncol"]] <- 2
 do.call(grid.arrange, hists)
 
 # Cbrt transformation
 life_expect_t <- life_expect_sq %>%
-  mutate(Adult.Mortality = Adult.Mortality^(1/3))
+  mutate(Adult.Mortality = Adult.Mortality^(1/3),
+        Diphtheria = log(Diphtheria))
 to_hist <- life_expect_t %>%
   select(-Life.Expectancy)
 hists <- mapply(histLifeExpect,
        variable = to_hist,
        name = names(to_hist),
-       width = c(0.3, 5),
+       width = c(0.3, 0.07),
        SIMPLIFY = FALSE)
 hists[["ncol"]] <- 2
 do.call(grid.arrange, hists)
@@ -366,19 +504,48 @@ life_expect_t <- life_expect_sq %>%
 ```
 
 
-##### Final Linear Model
+## Final Linear Model
 
 ```{r, fig.align='center'}
-# <...code for linear model, assumption checking, etc...>
+life_expect_lm <- lm(Life.Expectancy ~ ., data = life_expect_t)
+summary(life_expect_lm)
 ```
-
-Our final model seems to meet all of the assumptions of linear regression. Specifically, the variance inflation factors are all under ten, and the residuals appear homoscedastic, as shown in the residuals versus fitted values plot. The assumption of... 
 
 Our final fitted model is: 
 
-$\log(\widehat{\text{AAMort}}_i) = \beta_0...$
+$$(\widehat{\text{Life.Expectancy}}_i)^2=-567.8-210.6\cdot\log(\text{Adult.Mortality}_i)+86.0\cdot\text{Diphtheria}_i$$
+```{r, fig.height=7, fig.width=7}
+point_matrix(life_expect_t)
+```
+```{r}
+jcreg_av(life_expect_lm)
+cor_graphic(life_expect_t, title = FALSE)
+vif(life_expect_lm)
+```
+```{r, fig.width=9.5}
+# Plot residuals
+rvf <- resid_vs_fitted(life_expect_lm)@plots[[1]] +
+  theme_bw() + theme(aspect.ratio = 1)
+hist <- jcreg_hist(life_expect_lm) +
+  theme_bw() + theme(aspect.ratio = 1) +
+  ggtitle("Histogram of Residuals")
+qq <- jcreg_qq(life_expect_lm)@plots[[1]]
+boxp <- jcreg_boxplot(life_expect_lm)
+grid.arrange(rvf, hist, qq, boxp, ncol = 2)
+```
+```{r, message=FALSE}
+resid_vs_pred(life_expect_lm)
+shapiro.test(life_expect_lm$residuals)
+```
+```{r}
+# Check for influential points
+jcreg_dfbetas(life_expect_lm)
+dffits <- jcreg_dffits(life_expect_lm)
+cooksd <- jcreg_cooksd(life_expect_lm)
+grid.arrange(dffits, cooksd, ncol = 2)
+```
 
-##### Model Assessment
+## Model Assessment
 
  
 
