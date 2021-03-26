@@ -232,6 +232,7 @@ GDP            | Gross Domestic Product per Capita (In USD)
 Population     | Population of the country
 Schooling      | Average number of years of schooling
 
+## Exploratory Statistics
 
 We start by applying basic summary and exploratory statistics to this data to better understand the data and identify trends.
 
@@ -310,6 +311,7 @@ ggplot(data = life_expect, mapping = aes(x = Status, y = Life.Expectancy)) +
 #create new variable and put Life.Expectancy last
 life_expect_var <- life_expect %>%
   select(Adult.Mortality : Status, Life.Expectancy) %>%
+  mutate(Developed = ifelse(Status == "Developed", 1, 0)) %>%
   as.data.frame()
 head(life_expect_var)
 
@@ -391,6 +393,14 @@ shapiro.test(init_model$residuals)
 
 The residuals are fairly normal, with some outliers at the lower tail. There does appear to be a slight cone shape to the residuals, which could be a problem. Based on these graphs we will attempt a transformation on the response.
 
+## Check if we need to include an interaction
+```{r}
+interaction_model <- lm(Life.Expectancy ~ Adult.Mortality + Diphtheria + Adult.Mortality:Diphtheria, data = life_expect)
+anova(init_model, interaction_model)
+```
+
+The p-value for the difference between models is highly insignificant, so we will not include an interaction.
+
 ## Transformations
 ```{r}
 # Apply boxCox to give us a starting point
@@ -436,7 +446,6 @@ hist <- jcreg_hist(cu_model) +
 qq <- jcreg_qq(cu_model)@plots[[1]]
 grid.arrange(rvf, hist, qq, ncol = 3)
 shapiro.test(cu_model$residuals)
-point_matrix(life_expect_sq)
 ```
 
 Based on the transformations attempted, the best one appears to be a squared or cubic transformation. The cubic transformation sees great improvement in homoscedasticity and some improvement in normality. The squared transformation has somewhat worse homoscedasticity the the cubic, but better normality. For simplicity, we will complete the rest of the analysis on a squared scale. We will attempt to further improve homoscedasticity with transformations of the predictors.
@@ -497,12 +506,11 @@ hists[["ncol"]] <- 2
 do.call(grid.arrange, hists)
 ```
 
-Adult Mortality was skewed, so we attempted a transformation. Clearly the log transform looks more normal than the others.
+Adult Mortality was skewed, so we attempted a transformation. Clearly the log transform looks more normal than the others. For Diphtheria, we will stick to the original data.
 ```{r}
 life_expect_t <- life_expect_sq %>%
   mutate(Adult.Mortality = log(Adult.Mortality))
 ```
-
 
 ## Final Linear Model
 
@@ -514,6 +522,7 @@ summary(life_expect_lm)
 Our final fitted model is: 
 
 $$(\widehat{\text{Life.Expectancy}}_i)^2=-567.8-210.6\cdot\log(\text{Adult.Mortality}_i)+86.0\cdot\text{Diphtheria}_i$$
+
 ```{r, fig.height=7, fig.width=7}
 point_matrix(life_expect_t)
 ```
@@ -522,6 +531,7 @@ jcreg_av(life_expect_lm)
 cor_graphic(life_expect_t, title = FALSE)
 vif(life_expect_lm)
 ```
+
 The partial regression plots appear to be linear. There is a strong negative correlation between Adult.Mortality and the Percentage of 1 year olds vaccinated against Diptheria. However, this correlation is below the multicollinearity cutoff of 0.8. The average VIF is 1.94 which is above the cutoff of 1 so there may be a problem with multicollinearity.
 
 ```{r, fig.width=9.5}
@@ -549,9 +559,8 @@ cooksd <- jcreg_cooksd(life_expect_lm)
 grid.arrange(dffits, cooksd, ncol = 2)
 ```
 There appears to be a few influential points. Specifically points 110 and 117.
-## Model Assessment
 
- 
+## Model Assessment
 
 ```{r, fig.align='center'}
 # <... code here...>
