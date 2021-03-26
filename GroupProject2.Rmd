@@ -609,6 +609,11 @@ We also were able to make intervals for a new city like Provo. We found that...
 
 < Include LOTS of interpretations here. Be especially cautious of your interpretations if you have interactions >
 
+## Interpretations
+
+For those with the same percentage of immunization coverage of 1-year-olds, for every additional one unit increase in Adult.Mortality, the average life expectancy in years decreases by 210.566.
+For those with the same Adult.Mortality rate, for every 1% increase in immunization coverage of 1-year-olds(Diphtheria), the average life expectancy in years increases by 86.040.
+
 We are also interested in how well the model fits the data. To do this, we look at metrics such as $R^2$, the RMSE, and.... These metrics are important to check and understand because...
 
 ```{r, fig.align='center'}
