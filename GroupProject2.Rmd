@@ -620,9 +620,30 @@ We are also interested in how well the model fits the data. To do this, we look 
 # Include things like: R2, RMSE, MAE, etc.
 summary(life_expect_lm)
 # I totally blanked how to do the RMSE and MAE
+
+# MSE
+anova <- aov(life_expect_lm)  # get ANOVA components
+life_expect_anova <- summary(anova)[[1]]  # save data in a usable form
+(mse = life_expect_anova["Residuals", "Sum Sq"] / 
+    life_expect_anova["Residuals", "Df"])
+
+# RMSE
+(sqrt(mse))
+
+# MAE
+life_expect_t$fitted_life.expectancy <- life_expect_lm$fitted.values
+sum(abs(life_expect_t$Life.Expectancy - life_expect_t$fitted_life.expectancy) / 
+  life_expect_lm$df.residual)
 ```
 
-It turns out that the model fits the data pretty well. An $R^2$ of 87.5% is rather high, and indicates that the variables we chose have done a good job describing the model.
+It turns out that the model fits the data pretty well. An $R^2$ of 87.5% is 
+rather high, and indicates that the variables we chose have done a good job 
+describing the model. The RMSE is 375.4. Since we transform the response variable
+to a square (the scale is transforms to the scale about 3000 to 7000), the RMSE 
+is relatively low comparing to the scale. In other words, the average error 
+performed by the model is small. The MAE also have a relative small number
+comparing to the scale of the transformed model, which also indicated that the
+average absolute difference between the outcome and the prediction is small.
 
 ### Summary and Conclusions
 
