@@ -522,6 +522,8 @@ jcreg_av(life_expect_lm)
 cor_graphic(life_expect_t, title = FALSE)
 vif(life_expect_lm)
 ```
+The partial regression plots appear to be linear. There is a strong negative correlation between Adult.Mortality and the Percentage of 1 year olds vaccinated against Diptheria. However, this correlation is below the multicollinearity cutoff of 0.8. The average VIF is 1.94 which is above the cutoff of 1 so there may be a problem with multicollinearity.
+
 ```{r, fig.width=9.5}
 # Plot residuals
 rvf <- resid_vs_fitted(life_expect_lm)@plots[[1]] +
@@ -537,6 +539,8 @@ grid.arrange(rvf, hist, qq, boxp, ncol = 2)
 resid_vs_pred(life_expect_lm)
 shapiro.test(life_expect_lm$residuals)
 ```
+The residuals appear to be fairly normally distributed around 0. The p-value of the shapiro-wilk test is greater than 0.05 so we can say that the data is normally distributed.
+There does not appear to be any distinctive cone shape to the data in the residual vs. fitted value plot so we can assume that it meets the homoskedastic assumption.
 ```{r}
 # Check for influential points
 jcreg_dfbetas(life_expect_lm)
@@ -544,7 +548,7 @@ dffits <- jcreg_dffits(life_expect_lm)
 cooksd <- jcreg_cooksd(life_expect_lm)
 grid.arrange(dffits, cooksd, ncol = 2)
 ```
-
+There appears to be a few influential points. Specifically points 110 and 117.
 ## Model Assessment
 
  
@@ -555,6 +559,39 @@ grid.arrange(dffits, cooksd, ncol = 2)
 # prediction intervals, etc.
 # If you have an interaction, code to compute the effect of one of the 
 # interaction variables on the response, etc.
+
+confint(life_expect_lm, level = 0.95)
+
+#confidence interval with mean adult mortality and mean diphtheria
+predict(life_expect_lm,
+        newdata = data.frame(Adult.Mortality = 169,
+                             Diphtheria = 72),
+        interval = "confidence",
+        level = 0.95)
+
+#prediction interval with mean adult mortality and mean diphtheria
+predict(life_expect_lm,
+        newdata = data.frame(Adult.Mortality = 169,
+                             Diphtheria = 72),
+        interval = "prediction",
+        level = 0.95)
+
+#confidence interval with mean adult mortality and everyone vaccinated against Diphtheria
+predict(life_expect_lm,
+        newdata = data.frame(Adult.Mortality = 169,
+                             Diphtheria = 100),
+        interval = "confidence",
+        level = 0.95)
+
+#confidence interval with mean adult mortality and no one vaccinated against Diphtheria
+predict(life_expect_lm,
+        newdata = data.frame(Adult.Mortality = 169,
+                             Diphtheria = 0),
+        interval = "confidence",
+        level = 0.95)
+
+anova(life_expect_lm)
+#a few different confidence intervals. I have no clue how to interpret these with the transformations that were done
 ```
 
 The confidence intervals for the variables are very informative. For example, we are 95% confident that... That is a fairly large range, and suggests increasing education opportunities in communities could significantly lower mortality. Another variable we found interesting was...
@@ -568,10 +605,12 @@ We are also interested in how well the model fits the data. To do this, we look 
 ```{r, fig.align='center'}
 # <...more code here...>
 # Include things like: R2, RMSE, MAE, etc.
+summary(life_expect_lm)
+# I totally blanked how to do the RMSE and MAE
 ```
 
-It turns out that the model fits the data pretty well. An $R^2$ of 74% is rather high, and indicates that...
+It turns out that the model fits the data pretty well. An $R^2$ of 87.5% is rather high, and indicates that the variables we chose have done a good job describing the model.
 
 ### Summary and Conclusions
 
-Understanding how environmental and socioeconomic characteristics contribute to the mortality rate can be critical to increasing overall human health and lifespan. We conducted an analysis to determine which of these types of variable significantly affect mortality, with a specific interest in air quality/pollution. After fitting a multiple linear regression model, we found that air quality, does, indeed, have a significant negative impact on mortality. We also found that the amount of education the population has decreases mortality. Additionally,...
+Life expectancy is one of the most frequently used metrics to determine health status among countries. It is also a good indicator of the development within countries. We conducted an analysis to find out which variables significantly affected life expectancy in 130 different countries. After fitting a multiple linear regression model, we found that the percent of infants immunized against diphtheria has a significant positive impact on life expectancy (the higher the immunization rate the higher the life expectancy). We also found that adult mortality had a negative impact on life expectancy.
