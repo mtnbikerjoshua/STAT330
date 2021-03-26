@@ -311,7 +311,6 @@ ggplot(data = life_expect, mapping = aes(x = Status, y = Life.Expectancy)) +
 #create new variable and put Life.Expectancy last
 life_expect_var <- life_expect %>%
   select(Adult.Mortality : Status, Life.Expectancy) %>%
-  mutate(Developed = ifelse(Status == "Developed", 1, 0)) %>%
   as.data.frame()
 head(life_expect_var)
 
