@@ -420,19 +420,6 @@ qq <- jcreg_qq(sq_model)@plots[[1]]
 grid.arrange(rvf, hist, qq, ncol = 3)
 shapiro.test(sq_model$residuals)
 
-# Power of 1.5 transformation
-life_expect_15 <- life_expect %>%
-  mutate(Life.Expectancy = Life.Expectancy^1.5)
-model_15 <- lm(Life.Expectancy ~ Adult.Mortality + Diphtheria, data = life_expect_15)
-rvf <- resid_vs_fitted(model_15)@plots[[1]] +
-  theme_bw() + theme(aspect.ratio = 1)
-hist <- jcreg_hist(model_15) +
-  theme_bw() + theme(aspect.ratio = 1) +
-  ggtitle("Histogram of Residuals")
-qq <- jcreg_qq(model_15)@plots[[1]]
-grid.arrange(rvf, hist, qq, ncol = 3)
-shapiro.test(model_15$residuals)
-
 # Cubed transformation
 life_expect_cu <- life_expect %>%
   mutate(Life.Expectancy = Life.Expectancy^3)
@@ -447,7 +434,7 @@ grid.arrange(rvf, hist, qq, ncol = 3)
 shapiro.test(cu_model$residuals)
 ```
 
-Based on the transformations attempted, the best one appears to be a squared or cubic transformation. The cubic transformation sees great improvement in homoscedasticity and some improvement in normality. The squared transformation has somewhat worse homoscedasticity the the cubic, but better normality. For simplicity, we will complete the rest of the analysis on a squared scale. We will attempt to further improve homoscedasticity with transformations of the predictors.
+We tried a squared, power of 1.5, cubed, log, and square root transformation. Based on the transformations attempted, the best one appears to be a squared or cubic transformation. The cubic transformation sees great improvement in homoscedasticity and some improvement in normality. The squared transformation has somewhat worse homoscedasticity the the cubic, but better normality. For simplicity, we will complete the rest of the analysis on a squared scale. We will attempt to further improve homoscedasticity with transformations of the predictors.
 
 ```{r, message=FALSE, results=FALSE}
 life_expect_sq <- life_expect_sq %>%
@@ -562,14 +549,9 @@ grid.arrange(dffits, cooksd, ncol = 2)
 ```
 There are a few points (110 and 117) that show up in a few of the plots but these are not too far out from the other points so the assumption of no influential points is met
 
-## Model Assessment
+## Confidence Intervals
 
 ```{r, fig.align='center'}
-# <... code here...>
-# Include things like: slopes, hypothesis tests, confidence intervals, 
-# prediction intervals, etc.
-# If you have an interaction, code to compute the effect of one of the 
-# interaction variables on the response, etc.
 
 confint(life_expect_lm, level = 0.95)
 
@@ -602,33 +584,28 @@ predict(life_expect_lm,
         level = 0.95)
 ```
 
-Confidence intervals for the coefficients
-We are 95% confident that, holding all else constant, that for every additional adult mortality the average life expectancy will decrease by between 5.457 and 19.783 years.
+Confidence intervals for the coefficients:
+
+We are 95% confident that, holding all else constant, for every additional unit of adult mortality (log scale) the average life expectancy will decrease by between 5.457 and 19.783 years.
 
 We are 95% confident that, holding all else constant that for every additional 1% of 1 year olds vaccinated for diphtheria, the average life expectancy will increase by between 8.797 and 9.731 years.
 
+Confidence and Prediction intervals for specific values:
 
-Confidence and Prediction intervals for specific values.
-We are 95% that the average life expectancy in a country with an average adult mortality of 169 per 1000 and a diphtheria vaccination rate of 72% is between 66.912 years and 67.946 years
+We are 95% confident that the average (over all countries) life expectancy in countries with an average adult mortality of 169 per 1000 and a diphtheria vaccination rate of 72% is between 66.912 years and 67.946 years
 
 We are 95% confident that the life expectancy of a country with an average adult mortality of 169 per 1000 and a diphtheria vaccination rate of 72% will be between 61.650 years and 72.754 years.
 
-We are 95% confident that the average life expectancy in a country with an average adult mortality of 169 per 1000 and a diphtheria vaccination rate of 99% will be between 81.301 years and 84.440 years. 
+We are 95% confident that the average (over all countries) life expectancy in countries with an average adult mortality of 169 per 1000 and a diphtheria vaccination rate of 99% will be between 81.301 years and 84.440 years. 
 
 We are 95% confident that the average life expectancy in a country with an average adult mortality of 169 per 1000 and a diphtheria vaccination rate of 46% will be between 45.737 years and 50.278 years.
 
-## Interpretations
-
-For those with the same percentage of immunization coverage of 1-year-olds, for every additional one unit increase in Adult.Mortality, the average life expectancy in years decreases by 210.566.
-For those with the same Adult.Mortality rate, for every 1% increase in immunization coverage of 1-year-olds(Diphtheria), the average life expectancy in years increases by 86.040.
+## Model Assesment
 
 We are also interested in how well the model fits the data. To do this, we look at metrics such as $R^2$, the RMSE, and.... These metrics are important to check and understand because...
 
 ```{r, fig.align='center'}
-# <...more code here...>
-# Include things like: R2, RMSE, MAE, etc.
 summary(life_expect_lm)
-# I totally blanked how to do the RMSE and MAE
 
 # MSE
 anova <- aov(life_expect_lm)  # get ANOVA components
