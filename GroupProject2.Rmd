@@ -531,7 +531,9 @@ cor_graphic(life_expect_t, title = FALSE)
 vif(life_expect_lm)
 ```
 
-The partial regression plots appear to be linear. There is a strong negative correlation between Adult.Mortality and the Percentage of 1 year olds vaccinated against Diptheria. However, this correlation is below the multicollinearity cutoff of 0.8. The average VIF is 1.94 which is above the cutoff of 1 so there may be a problem with multicollinearity.
+The linearity assumption is met. The partial regression plots appear to be linear. 
+There is a strong negative correlation between Adult.Mortality and the Percentage of 1 year olds vaccinated against Diptheria. However, this correlation is below the multicollinearity cutoff of 0.8. The average VIF is 1.94 which is above the cutoff of 1. However we feel that the multicollinearity assumption is met.
+The independence assumption is met, the data was collected randomly.
 
 ```{r, fig.width=9.5}
 # Plot residuals
@@ -548,8 +550,9 @@ grid.arrange(rvf, hist, qq, boxp, ncol = 2)
 resid_vs_pred(life_expect_lm)
 shapiro.test(life_expect_lm$residuals)
 ```
-The residuals appear to be fairly normally distributed around 0. The p-value of the shapiro-wilk test is greater than 0.05 so we can say that the data is normally distributed.
-There does not appear to be any distinctive cone shape to the data in the residual vs. fitted value plot so we can assume that it meets the homoskedastic assumption.
+The Normality assumption is met. The residuals appear to be fairly normally distributed around 0. The p-value of the shapiro-wilk test is greater than 0.05 so we can say that the data is normally distributed.
+
+There does not appear to be any distinctive cone shape to the data in the residual vs. fitted value plot so we can assume that the homoskedastic assumption is met.
 ```{r}
 # Check for influential points
 jcreg_dfbetas(life_expect_lm)
@@ -557,7 +560,7 @@ dffits <- jcreg_dffits(life_expect_lm)
 cooksd <- jcreg_cooksd(life_expect_lm)
 grid.arrange(dffits, cooksd, ncol = 2)
 ```
-There appears to be a few influential points. Specifically points 110 and 117.
+There are a few points (110 and 117) that show up in a few of the plots but these are not too far out from the other points so the assumption of no influential points is met
 
 ## Model Assessment
 
@@ -572,41 +575,47 @@ confint(life_expect_lm, level = 0.95)
 
 #confidence interval with mean adult mortality and mean diphtheria
 predict(life_expect_lm,
-        newdata = data.frame(Adult.Mortality = 169,
+        newdata = data.frame(Adult.Mortality = log(169),
                              Diphtheria = 72),
         interval = "confidence",
         level = 0.95)
 
 #prediction interval with mean adult mortality and mean diphtheria
 predict(life_expect_lm,
-        newdata = data.frame(Adult.Mortality = 169,
+        newdata = data.frame(Adult.Mortality = log(169),
                              Diphtheria = 72),
         interval = "prediction",
         level = 0.95)
 
 #confidence interval with mean adult mortality and everyone vaccinated against Diphtheria
 predict(life_expect_lm,
-        newdata = data.frame(Adult.Mortality = 169,
-                             Diphtheria = 100),
+        newdata = data.frame(Adult.Mortality = log(169),
+                             Diphtheria = 99),
         interval = "confidence",
         level = 0.95)
 
 #confidence interval with mean adult mortality and no one vaccinated against Diphtheria
 predict(life_expect_lm,
-        newdata = data.frame(Adult.Mortality = 169,
-                             Diphtheria = 0),
+        newdata = data.frame(Adult.Mortality = log(169),
+                             Diphtheria = 46),
         interval = "confidence",
         level = 0.95)
-
-anova(life_expect_lm)
-#a few different confidence intervals. I have no clue how to interpret these with the transformations that were done
 ```
 
-The confidence intervals for the variables are very informative. For example, we are 95% confident that... That is a fairly large range, and suggests increasing education opportunities in communities could significantly lower mortality. Another variable we found interesting was...
+Confidence intervals for the coefficients
+We are 95% confident that, holding all else constant, that for every additional adult mortality the average life expectancy will decrease by between 5.457 and 19.783 years.
 
-We also were able to make intervals for a new city like Provo. We found that...
+We are 95% confident that, holding all else constant that for every additional 1% of 1 year olds vaccinated for diphtheria, the average life expectancy will increase by between 8.797 and 9.731 years.
 
-< Include LOTS of interpretations here. Be especially cautious of your interpretations if you have interactions >
+
+Confidence and Prediction intervals for specific values.
+We are 95% that the average life expectancy in a country with an average adult mortality of 169 per 1000 and a diphtheria vaccination rate of 72% is between 66.912 years and 67.946 years
+
+We are 95% confident that the life expectancy of a country with an average adult mortality of 169 per 1000 and a diphtheria vaccination rate of 72% will be between 61.650 years and 72.754 years.
+
+We are 95% confident that the average life expectancy in a country with an average adult mortality of 169 per 1000 and a diphtheria vaccination rate of 99% will be between 81.301 years and 84.440 years. 
+
+We are 95% confident that the average life expectancy in a country with an average adult mortality of 169 per 1000 and a diphtheria vaccination rate of 46% will be between 45.737 years and 50.278 years.
 
 ## Interpretations
 
