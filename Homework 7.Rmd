@@ -1,0 +1,286 @@
+---
+title: "Homework 7"
+subtitle: <center> <h1>Logistic Regression</h1> </center>
+author: <center> Joshua Carpenter <center>
+output: html_document
+---
+
+<style type="text/css">
+h1.title {
+font-size: 40px;
+text-align: center;
+}
+</style>
+
+```{r setup, include=FALSE}
+library(jcreg)
+library(gridExtra)
+library(tidyverse)
+```
+
+## Data and Description
+
+**NOTE: For this assignment, you do not need to make your graphs/plots look "pretty", meaning you do not need to worry about changing the axis limits, relabeling axes, etc.**
+
+Type 2 diabetes is a problem with the body that causes blood sugar levels to rise higher than normal (hyperglycemia) because the body does not use insulin properly. Specifically, the body cannot make enough insulin to keep blood sugar levels normal. Type 2 diabetes is associated with various health complications such as neuropathy (nerve damage), glaucoma, cataracts and various skin disorders. Early detection of diabetes is crucial to proper treatment so as to alleviate complications.
+
+The data set contains information on 392 randomly selected women who are at risk for diabetes. The data set contains the following variables:
+
+Variable  | Description
+--------- | -------------
+pregnant  | Number of times pregnant
+glucose   | Plasma glucose concentration at 2 hours in an oral glucose tolerance test
+diastolic | Diastolic blood pressure (mm Hg)
+triceps   | Triceps skin fold thickness (mm)
+insulin   | 2 hour serum insulin (mu U/ml)
+bmi       | Body mass index ($kg/m^2$, mass in kilograms divided by height in meters-squared)
+pedigree  | Numeric strength of diabetes in family line (higher numbers mean stronger history)
+age       | Age
+diabetes  | Does the patient have diabetes (0 if "No", 1 if "Yes")
+
+The data can be found in the Diabetes data set on Canvas. Download Diabetes.txt, and put it in the same folder as this R Markdown file.
+
+#### 0. Replace the text "< PUT YOUR NAME HERE >" (above next to "author:") with your full name.
+
+#### 1. Read in the data set, and call the data frame "dia". Print a summary of the data and make sure the data makes sense.
+
+```{r}
+(dia <- read.csv("Diabetes.txt", sep = " ", row.names = 1) %>%
+  as.tibble())
+```
+
+#### 2. Convert the response variable to a factor. Hint: use `as.factor` and override the current response column in the data set.
+
+```{r}
+dia <- dia %>%
+  mutate(diabetes = as.factor(diabetes))
+```
+
+#### 3. Explore the data: create a correlation matrix for the covariates. *Comment on why or why not you think multicollinearity may be a problem for this data set.* 
+
+```{r, fig.align='center'}
+dia %>%
+  select(-diabetes) %>%
+  cor_graphic()
+```
+
+Based on the correlation matrix, I do not think there will be a problem with multicollinearity. The majority of variables have little to no correlation. None of the few variables that are more correlated have a correlation coefficient of greater than 0.7.
+
+#### 4. Explore the data: create boxplots for these predictors against the response: glucose, bmi, pedigree, and age (4 plots in total. You may want to use the grid.arrange function from the gridExtra package to display them in a 2x2 grid). *Briefly comment on one interesting trend you observe.*
+
+```{r, fig.align='center'}
+dia_boxplot <- function(data, name = "Variable") {
+  head(var)
+  ggplot(mapping = aes(y = data)) +
+    geom_boxplot() +
+    stat_summary(mapping = ggplot2::aes(x = 0),
+                 fun = mean, geom = "point",
+                 shape = 4, size = 2, color = "darkred") +
+    theme_classic() +
+    theme(aspect.ratio = 2,
+          axis.text.x = ggplot2::element_blank(),
+          axis.ticks.x = ggplot2::element_blank()) +
+    ylab(name) +
+    xlab("")
+}
+dia_boxplots <- dia %>%
+  select(glucose, bmi, pedigree, age) %>%
+  mapply(dia_boxplot, data = ., name = names(.), SIMPLIFY = FALSE)
+dia_boxplots["ncol"] <- 4
+do.call(grid.arrange, dia_boxplots)
+```
+
+All these variables are right skewed, `pedigree` and `age` pretty heavily.
+
+#### 5. Explore the data: create jittered scatterplots for these predictors against the response: pregnant, diastolic, triceps, insulin (4 plots in total. You may want to use the grid.arrange function from the gridExtra package to display them in a 2x2 grid). *Briefly comment on one interesting trend you observe.*
+
+```{r, fig.align='center'}
+# your code here
+```
+
+< your response here >
+
+#### 6. Briefly explain why traditional multiple linear regression methods are not suitable for *this* data set. You should mention at least two of the reasons we discussed in class (*your reasons should refer to this data set (i.e. be specific, not general)*).
+
+< your response here >
+
+#### 7. Use a variable selection procedure to help you decide which, if any, variables to omit from the logistic regression model you will soon fit. You may choose which selection method to use (best subsets, backward, sequential replacement, LASSO, or elastic net) and which metric/criteria to use (AIC, BIC, or CV/PMSE). *Briefly justify (in a few sentences) why you chose the method and metric that you did.*
+
+```{r, fig.align='center'}
+# your code here
+```
+
+< your response here >
+
+#### 8. Write out the logistic regression model for this data set using the covariates that you see fit. You should use parameters/Greek letters (NOT the "fitted" model using numbers...since you have not fit a model yet;) ).
+
+< your response here >
+
+#### 9. Fit a logistic regression model using the covariates you covariates you chose. Print a summary of the results.
+
+```{r, fig.align='center'}
+# your code here
+```
+
+
+
+
+### Questions 10-14 involve using diagnostics to check the logistic regression model assumptions. For each assumption, (1) code the diagnostic(s) that I indicate (next to the assumption in parentheses) to determine if the assumption is violated, and (2) explain whether or not you think the assumption is violated and why you think that.
+
+
+#### 10. The X's vs log odds are linear (monotone in probability) (Use scatterplots with smoothers)
+
+```{r, fig.align='center'}
+# your code here
+```
+
+< your response here >
+
+#### 11. The observations are independent (no diagnostic tools - just think about how the data was collected and briefly write your thoughts)
+
+< your response here >
+
+#### 12. The model describes all observations (i.e., there are no influential points) (Use DFFITS)
+
+```{r, fig.align='center'}
+# your code here
+```
+
+< your response here >
+
+#### 13. Additional predictor variables are not required (no diagnostic tools - just think about the variables you have and if there are other variables you think would help predict the response)
+
+< your response here >
+
+#### 14. No multicollinearity (Use variance inflation factors)
+
+```{r, fig.align='center'}
+# your code here
+```
+
+< your response here >
+
+
+
+
+
+#### 15. Briefly comment on if all assumptions are met. If there is anything you would like to do before proceeding to statistical inference, do that here.
+
+```{r, fig.align='center'}
+# your code here, if needed
+```
+
+< your response here >
+
+
+
+
+#### 16. For the coefficient for bmi, compute (and output) the log odds ratio ($\beta_{bmi}$, pull this value from the model output), odds ratio ($\exp\{\beta_{bmi}\}$), and the odds ratio converted to a percentage ($100 \times (\exp\{\beta_{bmi}\} - 1)%$). (If you cannot view the math used in this question (and subsequent), you can see it by knitting the document.)
+
+```{r, fig.align='center'}
+# your code here
+```
+
+#### 17. Interpret the coefficient for bmi based on the FOUR different ways we discussed in class.
+
+*Interpretation 1:* < your response here >
+
+*Interpretation 2:* < your response here >
+
+*Interpretation 3:* < your response here >
+
+*Interpretation 4:* < your response here >
+
+#### 18. Create (and output) 95% confidence intervals for $\beta_k$, $\exp\{\beta_k\}$, and $100 \times (\exp\{\beta_k\} - 1)%$ for all predictors using the `confint` function.
+
+```{r, fig.align='center'}
+# your code here
+```
+
+#### 19. Interpret the 95% confidence intervals for bmi for $\beta_{bmi}$, $\exp\{\beta_{bmi}\}$, and $100 \times (\exp\{\beta_{bmi}\} - 1)%$ (three interpretations total).
+
+*Interpretation using $\beta_{bmi}$:* < your response here >
+
+*Interpretation using $\exp\{\beta_{bmi}\}$:* < your response here >
+
+*Interpretation using $100 \times (\exp\{\beta_{bmi}\} - 1)%$:* < your response here >
+
+#### 20. Calculate a 95% confidence interval for the predicted probability that a patient has diabetes where pregnant = 1, glucose = 90, diastolic = 62, triceps = 18, insulin = 59, bmi = 25.1, pedigree = 1.268 and age = 25. Note that you may not need to use all of these values depending on the variables you chose to include in your model. *Do you think this patient will develop diabetes? Why or why not?*
+
+```{r}
+# your code here
+```
+
+< your response here >
+
+#### 21. Compute the likelihood ratio test statistic (aka deviance, aka model chi-squared test) for the model, and compute the associated $p$-value. Print out the test statistic and the $p$-value. *Based on the results, what do you conclude?*
+
+```{r, fig.align='center'}
+# your code here
+```
+
+< your response here >
+
+#### 22. Compute (and output) the pseudo $R^2$ value for the model.
+
+```{r, fig.align='center'}
+# your code here
+```
+
+#### 23. What is the best cutoff value for the model that minimizes the percent misclassified? Show your code and output the best cutoff value.
+
+```{r, fig.align='center'}
+# your code here
+```
+
+
+#### 24. Create (and output) a confusion matrix using the best cutoff value you found above.
+
+```{r, fig.align='center'}
+# your code here
+```
+
+#### 25. Based on the confusion matrix, what is the value for the specificity, and what does the specificity measure? Print the specificity.
+
+```{r, fig.align='center'}
+# your code here
+```
+
+< your response here >
+
+#### 26. Based on the confusion matrix, what is the value for the sensitivity, and what does the sensitivity measure? Print the sensitivity.
+
+```{r, fig.align='center'}
+# your code here
+```
+
+< your response here >
+
+#### 27. Based on the confusion matrix, what is the percent correctly classified (accuracy), and what does the percent correctly classified measure? Print the percent correctly classified.
+
+```{r, fig.align='center'}
+# your code here
+```
+
+< your response here >
+
+#### 28. Plot (and output) the ROC curve for the model (either using the `pROC` package or the `ROCR` package).
+
+```{r, fig.align='center'}
+# your code here
+```
+
+#### 29. What is the AUC for the ROC curve plotted above? Print the value of the AUC.
+
+```{r, fig.align='center'}
+# your code here
+```
+
+#### 30. Briefly summarize what you learned, personally, from this analysis about the statistics, model fitting process, etc.
+
+<span style="color:red"> **1 point for something reasonable.** </span>
+
+#### 31. Briefly summarize what you learned from this analysis *to a non-statistician*. Write a few sentences about (1) the purpose of this data set and analysis and (2) what you learned about this data set from your analysis. Write your response as if you were addressing a business manager (avoid using statistics jargon) and just provide the main take-aways.
+
+< your response here >
+
