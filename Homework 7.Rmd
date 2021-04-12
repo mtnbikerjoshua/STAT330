@@ -20,6 +20,7 @@ library(gridExtra)
 library(tidyverse)
 library(car)
 library(knitr)
+library(pROC)
 set.seed(1321)
 ```
 
@@ -63,10 +64,12 @@ dia <- dia %>%
 
 #### 3. Explore the data: create a correlation matrix for the covariates. *Comment on why or why not you think multicollinearity may be a problem for this data set.* 
 
+Disclaimer: For many already familiar tasks in this homework, like EDA and variable selection, I use functions from a package I wrote myself called jcreg. If you want to see the code for those functions see https://github.com/mtnbikerjoshua/jcreg. I included the code to install the package in the setup chunk of this .Rmd file so that the code would be reproducible. Once you have the package installed, you can read the documentation via `?function_name`.
+
 ```{r, fig.align='center'}
 dia %>%
   select(-diabetes) %>%
-  cor_graphic()
+  cor_graphic() #From jcreg
 ```
 
 Based on the correlation matrix, I do not think there will be a problem with multicollinearity. The majority of variables have little to no correlation. None of the few variables that are more correlated have a correlation coefficient of greater than 0.7.
@@ -129,7 +132,7 @@ Out of all the variable selection methods, I would choose to use best subsets fo
 
 #### 8. Write out the logistic regression model for this data set using the covariates that you see fit. You should use parameters/Greek letters (NOT the "fitted" model using numbers...since you have not fit a model yet;) ).
 
-$$\text{diabetes}_i=\beta_0+\beta_1\cdot\text{glucose}_i+\beta_2\cdot\text{bmi}_i+\beta_3\cdot\text{pedigree}_i+\beta_4\cdot\text{age}_i+\epsilon_i\ \ \ \text{where}\ \ \ \epsilon_i\stackrel{iid}{\sim}N(\mu,\sigma^2)$$
+$$\log\left(\frac{\text{diabetes}_i}{1-\text{diabetes}_i}\right)=\beta_0+\beta_1\cdot\text{glucose}_i+\beta_2\cdot\text{bmi}_i+\beta_3\cdot\text{pedigree}_i+\beta_4\cdot\text{age}_i+\epsilon_i\ \ \ \text{where}\ \ \ \epsilon_i\stackrel{iid}{\sim}N(\mu,\sigma^2)$$
 
 #### 9. Fit a logistic regression model using the covariates you covariates you chose. Print a summary of the results.
 
@@ -158,7 +161,7 @@ dia_smooth <- function(var) {
     xlab(var)
 }
 dia_smoothed <- dia %>%
-  select(-diabetes) %>%
+  select(glucose, bmi, pedigree, age) %>%
   names() %>%
   lapply(dia_smooth)
 do.call(grid.arrange, dia_smoothed)
@@ -176,11 +179,11 @@ The subjects were randomly selected. This assumption is met.
 jcreg_dffits(dia_model)
 ```
 
-According to the dffits plot, there are no potential influential points. This assumption in met.
+According to the dffits plot, there are no clearly influential points. This assumption is met.
 
 #### 13. Additional predictor variables are not required (no diagnostic tools - just think about the variables you have and if there are other variables you think would help predict the response)
 
-The most important predictors of diabetes are probably glucose and insulin. I can think of any other variables that would affect the response.
+The most important predictors of diabetes are probably glucose and insulin. I can't think of any other variables that would affect the response.
 
 #### 14. No multicollinearity (Use variance inflation factors)
 
@@ -279,7 +282,23 @@ cat("Pseudo R-squared:", 1 - dia_model$deviance / dia_model$null.deviance)
 #### 23. What is the best cutoff value for the model that minimizes the percent misclassified? Show your code and output the best cutoff value.
 
 ```{r, fig.align='center'}
-# your code here
+dia_preds <- predict(dia_model, type = "response")
+possible_cutoffs <- seq(0, 1, length = 100)
+
+diabetes_binary <- ifelse(dia$diabetes == "1", 1, 0)
+
+percent_misclassified <- lapply(possible_cutoffs, "<=", dia_preds) %>%
+  lapply("!=", diabetes_binary) %>%
+  sapply(mean, simplify = TRUE)
+
+ggplot(mapping = aes(x = possible_cutoffs, y = percent_misclassified)) +
+  geom_line() +
+  theme_classic() +
+  theme(aspect.ratio = 1) +
+  xlab("Possible Cutoffs") +
+  ylab("Percent Misclassified")
+
+(cutoff <- possible_cutoffs[which.min(percent_misclassified)])
 ```
 
 
@@ -291,50 +310,59 @@ conf_mat <- function(model, cutoff) {
   predicted <- as.numeric(fitted(model) > cutoff)
   table("Truth" = model$y, "Predicted" = predicted)
 }
-conf_mat(dia_model, 0.5)
+(dia_confusion <- conf_mat(dia_model, cutoff))
 ```
 
 #### 25. Based on the confusion matrix, what is the value for the specificity, and what does the specificity measure? Print the specificity.
 
 ```{r, fig.align='center'}
-# your code here
+cat("Specificity:", dia_confusion["0", "0"] / sum(dia_confusion["0",]))
 ```
 
-< your response here >
+Specificity measures the proportion of people who do not have diabetes that are correctly classified as such.
 
 #### 26. Based on the confusion matrix, what is the value for the sensitivity, and what does the sensitivity measure? Print the sensitivity.
 
 ```{r, fig.align='center'}
-# your code here
+cat("Sensitivity:", dia_confusion["1", "1"] / sum(dia_confusion["1",]))
 ```
 
-< your response here >
+Specificity measures the proportion of people who have diabetes that are correctly classified as such. 
 
 #### 27. Based on the confusion matrix, what is the percent correctly classified (accuracy), and what does the percent correctly classified measure? Print the percent correctly classified.
 
 ```{r, fig.align='center'}
-# your code here
+cat("Accuracy:", (dia_confusion["1", "1"] + dia_confusion["0", "0"]) / sum(dia_confusion))
 ```
 
-< your response here >
+The percent correctly classified measures exactly what you would think: the number of people correctly classified out of the total number of people.
 
 #### 28. Plot (and output) the ROC curve for the model (either using the `pROC` package or the `ROCR` package).
 
 ```{r, fig.align='center'}
-# your code here
+dia_roc <- roc(dia$diabetes, dia_preds)
+
+ggplot() +
+  geom_path(mapping = aes(x = 1 - dia_roc$specificities, 
+                          y = dia_roc$sensitivities)) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  theme_bw() + 
+  xlab("1 - Specificity (False Positive Rate)") +
+  ylab("Sensitivity (True Positive Rate)") +
+  theme(aspect.ratio = 1)
 ```
 
 #### 29. What is the AUC for the ROC curve plotted above? Print the value of the AUC.
 
 ```{r, fig.align='center'}
-# your code here
+cat("AUC:", auc(dia_roc))
 ```
 
 #### 30. Briefly summarize what you learned, personally, from this analysis about the statistics, model fitting process, etc.
 
-<span style="color:red"> **1 point for something reasonable.** </span>
+The main takeaways I had from this homework were mainly relating to model evaluation for logistic regression. I came to understand the confusion matrix, sensitivity, specificity, accuracy, etc.
 
 #### 31. Briefly summarize what you learned from this analysis *to a non-statistician*. Write a few sentences about (1) the purpose of this data set and analysis and (2) what you learned about this data set from your analysis. Write your response as if you were addressing a business manager (avoid using statistics jargon) and just provide the main take-aways.
 
-< your response here >
+The purpose of this analysis was to create a method of early detection of diabetes. We concluded that we can predict diabetes in women at risk with 80% accuracy based on the results of a oral glucose tolerance test, family history of diabetes, age, and BMI.
 
