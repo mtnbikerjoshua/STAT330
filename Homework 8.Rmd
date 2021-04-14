@@ -13,8 +13,13 @@ text-align: center;
 </style>
 
 ```{r setup, include=FALSE}
+library(devtools)
+install_github("mtnbikerjoshua/jcreg@development")
+
 library(tidyverse)
 library(jcreg)
+library(gridExtra)
+library(car)
 ```
 
 ## Data and Description
@@ -47,7 +52,7 @@ The data can be found in the Bikes data set on Canvas. Download Bikes.csv, and p
 
 ```{r}
 bikes <- read.csv("Bikes.csv", stringsAsFactors = TRUE) %>%
-  as.tibble()
+  as_tibble()
 ```
 
 #### 2. Explore the data: create a histogram for the response. *Briefly describe the shape of the distribution - you should mention (1) symmetry or skewness, (2) the number of modes, and (3) potential outliers.*
@@ -61,22 +66,27 @@ The data is symmetric with one clear mode and maybe two others. There are no cle
 
 #### 3. Briefly explain why traditional multiple linear regression methods are not suitable for *this* data set. You should mention the four reasons we discussed in class (*your reasons should each refer to this data set*).
 
-< your response here >
+Since traditional regression can have negative or continuous predictions, that will cause a problem as you can't have negative or fractional bike rentals. Also, since there are more data points gathered on the low end of the spectrum (few bike rentals) the linearity assumption might be violated. Since bike rentals are not normally distributed, the residuals probably aren't either and you could make a smilar argument about homoscedasticity.
 
 #### 4. Use a variable selection procedure to help you decide which, if any, variables to omit from the Poisson regression model you will soon fit. You may choose which selection method to use (best subsets, forward, backward, sequential replacement, LASSO, or elastic net) and which metric/criteria to use (AIC, BIC, or CV/PMSE).
 
-```{r, fig.align='center'}
+```{r, fig.align='center', message=FALSE}
 var_selection(bikes, method = c("backward", "seqrep"), family = poisson(link = "log"))
 ```
 
 #### 5. Write out the Poisson regression model for this data set using the covariates that you see fit. You should use parameters/Greek letters (NOT the "fitted" model using numbers...since you have not fit a model yet;) ). Be sure to use indicator variables, if necessary. (You will need to split the equation on multiple lines to have it render properly as an HTML file.)
 
-< your response here >
+$$\text{rental_cnt}\stackrel{iid}{\sim}\text{Poisson}(\mu_i)$$
+$$\log(\mu_i)=\beta_0+\beta_1\cdot I(\text{yr}_i=2012)+\beta_2\cdot\text{temp}_i+\beta_3\cdot\text{hum}_i+\beta_4\cdot\text{windspeed}_i+
+\beta_5\cdot I(\text{holiday}_i=\text{Yes})$$
+where $\mu_i$ is the average number of bicycle rentals per day.
 
 #### 6. Fit a Poisson regression model using the covariates that you used in the previous question (use the `glm` function - do not just call the result from the variable selection procedure). Print a summary of the results.
 
 ```{r, fig.align='center'}
-# your code here
+bikes_model <- glm(cnt ~ yr + temp + hum + windspeed + holiday,
+                   data = bikes, family = poisson)
+summary(bikes_model)
 ```
 
 
@@ -91,41 +101,66 @@ var_selection(bikes, method = c("backward", "seqrep"), family = poisson(link = "
 #### 7. The X's vs log(y) are linear (use scatterplots and partial regression (added-variable) plots)
 
 ```{r, fig.align='center'}
-# your code here
+scatterplot_bikes <- function(x, y, xlab, ylab) {
+  ggplot(mapping = aes(x, y)) +
+    geom_point() +
+    theme_bw() +
+    theme(aspect.ratio = 1) +
+    xlab(xlab) +
+    ylab(ylab)
+}
+
+bikes <- bikes %>%
+  mutate(logcnt = log(cnt))
+bikes %>%  
+  select(temp, hum, windspeed) %>%
+  mapply(FUN = scatterplot_bikes, x = ., xlab = names(.),
+         MoreArgs = list(y = bikes$logcnt, ylab = "log(cnt)"), SIMPLIFY = FALSE)
+  
+jcreg_av(bikes_model)
 ```
 
-< your response here >
+The scatterplot for `temp` looks like it has a non-linear correlation. I would want to try to transform before doing regression. this assumption is not met.
 
 #### 8. The residuals are independent (no diagnostic tools - just think about how the data was collected and briefly write your thoughts)
 
-< your response here >
+There is potential for dependency across days, but I thing our predictors take care of that.
 
 #### 9. The model describes all observations (i.e., there are no influential points) (use DFFITS)
 
 ```{r, fig.align='center'}
-# your code here
+jcreg_dffits(bikes_model)
 ```
 
-< your response here >
+There are at least two clear outliers that could be influential (observations 69 and 668). This assumption is not met.
 
 #### 10. Additional predictor variables are not required (no diagnostic tools - just think about the variables you have and if there are other variables you think would help predict the response)
 
-< your response here >
+This seems like a pretty comprehensive set of predictors. I can't think of any others that would help predict bike rentals.
 
 #### 11. No multicollinearity (use variance inflation factors)
 
 ```{r, fig.align='center'}
-# your code here
+vif(bikes_model)
 ```
 
-< your response here >
+The VIF's are all low (close to one). This assumption is met.
 
 #### 12. Mean = Variance (no overdispersion/underdispersion) (use the three methods discussed in class)
 ```{r, fig.align='center'}
-# your code here
+# Compare mean and variance
+mean(bikes$cnt)
+var(bikes$cnt)
+
+# Conduct Chi-sq test
+pchisq(bikes_model$deviance, bikes_model$df.residual, lower.tail = FALSE)
+
+bikes_quasipoisson <- glm(cnt ~ yr + temp + hum + windspeed,
+                   data = bikes, family = quasipoisson)
+summary(bikes_quasipoisson)
 ```
 
-< your response here >
+This assumption is not met. There is very great overdispersion.
 
 
 
@@ -141,7 +176,7 @@ var_selection(bikes, method = c("backward", "seqrep"), family = poisson(link = "
 #### 13. For the coefficient for holiday, compute (and output) $\beta_{holiday}$ (pull this value from the model output), $\exp\{\beta_{holiday}\}$, and $100 \times (\exp\{\beta_{holiday}\} - 1)%$.
 
 ```{r, fig.align='center'}
-# your code here
+bikes_model$coefficients["holidayYes"]
 ```
 
 #### 14. Interpret the coefficient for holiday based on the last TWO different ways we discussed in class (for negative coefficients).
